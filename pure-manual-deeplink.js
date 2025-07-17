@@ -518,25 +518,50 @@ app.get('/r/:type', (req, res) => {
   const userAgent = req.get('User-Agent') || '';
   const platform = detectPlatform(userAgent);
 
-  // Log the request
-  console.log(`Deep link request: ${type}, Platform: ${platform}, Params:`, queryParams);
+  // Enhanced logging
+  console.log(`[${new Date().toISOString()}] Deep link request:`, {
+    type,
+    platform,
+    userAgent: userAgent.substring(0, 100) + '...',
+    queryParams,
+    headers: {
+      'x-forwarded-for': req.get('X-Forwarded-For'),
+      'cf-connecting-ip': req.get('CF-Connecting-IP'),
+      'x-real-ip': req.get('X-Real-IP')
+    }
+  });
 
   // Special handling for Firebase migration links
   if (type === 'cek-saldo' && queryParams.source === 'firebase') {
     console.log('🔥 Firebase Dynamic Link migration detected for cek-saldo');
   }
 
+  // Enhanced mobile detection
+  const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(userAgent);
+  const isTablet = /Tablet|iPad/i.test(userAgent);
+  
+  console.log(`Detection results: platform=${platform}, isMobile=${isMobile}, isTablet=${isTablet}`);
+
   // Handle bot/crawler requests
   if (platform === 'bot') {
+    console.log('Serving bot/crawler page');
     return res.send(generateSocialMetaPage(type, queryParams));
+  }
+
+  // For mobile devices, always serve smart redirect page
+  if (isMobile || platform === 'android' || platform === 'ios') {
+    console.log('Serving mobile smart redirect page');
+    return res.send(generateSmartRedirectPage(type, queryParams));
   }
 
   // Handle desktop requests
   if (platform === 'windows' || platform === 'mac' || platform === 'linux') {
+    console.log('Serving desktop page');
     return res.send(generateDesktopPage(type, queryParams));
   }
 
-  // Handle mobile requests
+  // Default to mobile smart redirect
+  console.log('Default serving mobile smart redirect page');
   res.send(generateSmartRedirectPage(type, queryParams));
 });
 
