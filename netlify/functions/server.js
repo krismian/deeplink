@@ -156,29 +156,27 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
   let primaryScheme, fallbackSchemes;
   
   if (isAndroid) {
-    // Android: Intent URL dengan type dari URL path dan semua parameters dari URL
+    // Android: Coba custom scheme dulu, baru Intent URL
     if (queryString) {
-      // Jika ada query parameters, teruskan ke app dengan type dari path
-      primaryScheme = `intent://${type}${queryString}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+      primaryScheme = `bpjstku://${type}${queryString}`;
+      fallbackScheme = `intent://${type}${queryString}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
     } else {
-      // Gunakan type dari URL path, jika tidak ada parameter tambahkan default
-      primaryScheme = `intent://${type}?type=registration#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+      primaryScheme = `bpjstku://${type}?type=${type}`;
+      fallbackScheme = `intent://${type}?type=${type}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
     }
     
     fallbackSchemes = [
-      `bpjstku://${type}${queryString}`,
-      `bpjstku://${type}?type=registration`,
+      primaryScheme,
+      fallbackScheme,
       `bpjstku://${type}`,
       'bpjstku://'
     ];
   } else {
-    // iOS: Custom scheme dengan type dari URL path dan semua parameters dari URL
+    // iOS: Custom scheme langsung
     if (queryString) {
-      // Jika ada query parameters, teruskan ke app dengan type dari path
       primaryScheme = `bpjstku://${type}${queryString}`;
     } else {
-      // Gunakan type dari URL path, jika tidak ada parameter tambahkan default
-      primaryScheme = `bpjstku://${type}?type=registration`;
+      primaryScheme = `bpjstku://${type}?type=${type}`;
     }
     
     fallbackSchemes = [`bpjstku://${type}`, 'bpjstku://'];
@@ -250,7 +248,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
     <body>
         <h2>Opening BPJSTKU App...</h2>
         <div class="spinner"></div>
-        <p>Redirecting with parameters: ${queryString || 'type=registration'}</p>
+        <p>Redirecting with parameters: ${queryString || '?type=' + type}</p>
         
         <div class="fallback-buttons">
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
@@ -263,7 +261,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
         
         <div class="debug-info">
             Platform: ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Other'}<br>
-            Target: ${type}${queryString || '?type=registration'}<br>
+            Target: ${type}${queryString || '?type=' + type}<br>
             Full URL: ${targetUrl}
         </div>
         
@@ -287,18 +285,69 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 console.log('Attempt', attempts, 'to open app');
                 
                 if (${isAndroid}) {
-                    // Android: Gunakan Intent URL dengan parameters
-                    console.log('Android detected - using Intent URL with parameters');
-                    window.location.href = '${primaryScheme}';
+                    if (attempts === 1) {
+                        // Android: Coba custom scheme dulu (lebih universal)
+                        console.log('Android attempt 1 - custom scheme:', '${primaryScheme}');
+                        tryOpenWithIframe('${primaryScheme}');
+                    } else if (attempts === 2) {
+                        // Fallback ke Intent URL
+                        console.log('Android attempt 2 - Intent URL:', '${typeof fallbackScheme !== 'undefined' ? fallbackScheme : 'undefined'}');
+                        ${typeof fallbackScheme !== 'undefined' ? `window.location.href = '${fallbackScheme}';` : `window.location.href = '${CONFIG.playStoreUrl}';`}
+                    } else {
+                        // Final fallback ke Play Store
+                        console.log('Android attempt 3 - Play Store');
+                        window.location.href = '${CONFIG.playStoreUrl}';
+                        return;
+                    }
                 } else if (${isIOS}) {
-                    // iOS: Gunakan custom scheme dengan parameters
-                    console.log('iOS detected - using custom scheme with parameters:', '${primaryScheme}');
-                    window.location.href = '${primaryScheme}';
+                    if (attempts === 1) {
+                        // iOS: Custom scheme
+                        console.log('iOS attempt 1 - custom scheme:', '${primaryScheme}');
+                        tryOpenWithIframe('${primaryScheme}');
+                    } else {
+                        // Fallback ke App Store
+                        console.log('iOS attempt 2 - App Store');
+                        window.location.href = '${CONFIG.appStoreUrl}';
+                        return;
+                    }
                 } else {
                     // Other mobile
                     console.log('Other mobile platform');
                     window.location.href = '${CONFIG.playStoreUrl}';
+                    return;
                 }
+                
+                // Retry setelah 3 detik jika belum berhasil
+                if (attempts < 3) {
+                    setTimeout(openApp, 3000);
+                }
+            }
+            
+            function tryOpenWithIframe(scheme) {
+                // Method 1: Iframe (silent)
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = scheme;
+                document.body.appendChild(iframe);
+                
+                // Method 2: Window location setelah delay singkat
+                setTimeout(function() {
+                    if (!appOpened) {
+                        console.log('Iframe timeout, trying window.location');
+                        try {
+                            window.location.href = scheme;
+                        } catch (e) {
+                            console.log('Custom scheme failed:', e.message);
+                        }
+                    }
+                }, 500);
+                
+                // Cleanup iframe
+                setTimeout(function() {
+                    if (iframe.parentNode) {
+                        iframe.parentNode.removeChild(iframe);
+                    }
+                }, 2000);
             }
             
             // Event listeners untuk deteksi app opened
@@ -337,16 +386,16 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             setTimeout(function() {
                 openApp();
                 
-                // Fallback timeout - show download options
+                // Fallback timeout - show download options (increase timeout)
                 setTimeout(function() {
-                    if (!appOpened) {
-                        console.log('❌ App not opened after 5 seconds, showing fallback');
+                    if (!appOpened && attempts === 0) {
+                        console.log('❌ App not opened after 10 seconds, showing fallback');
                         document.querySelector('.fallback-buttons').style.opacity = '1';
                         document.querySelector('.fallback-buttons').style.animation = 'none';
                         document.querySelector('h2').textContent = 'App not installed?';
                         document.querySelector('.spinner').style.display = 'none';
                     }
-                }, 5000);
+                }, 10000); // Increased from 5000 to 10000
             }, 1000);
             
             // Error handling
