@@ -331,16 +331,24 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 
                 if (${isAndroid}) {
                     if (attempts === 1) {
-                        // Android: Coba custom scheme dulu (lebih universal)
+                        // Android: Coba custom scheme dulu dengan multiple attempts
                         console.log('Android attempt 1 - custom scheme:', '${primaryScheme}');
                         tryOpenWithIframe('${primaryScheme}');
                     } else if (attempts === 2) {
-                        // Fallback ke Intent URL
-                        console.log('Android attempt 2 - Intent URL:', '${fallbackScheme}');
+                        // Android: Coba custom scheme lagi dengan method berbeda (lebih agresif)
+                        console.log('Android attempt 2 - custom scheme aggressive:', '${primaryScheme}');
+                        try {
+                            window.location.href = '${primaryScheme}';
+                        } catch (e) {
+                            console.log('Direct scheme failed:', e.message);
+                        }
+                    } else if (attempts === 3) {
+                        // Android: Baru sekarang coba Intent URL
+                        console.log('Android attempt 3 - Intent URL:', '${fallbackScheme}');
                         window.location.href = '${fallbackScheme}';
                     } else {
-                        // Final fallback ke Play Store
-                        console.log('Android attempt 3 - Play Store');
+                        // Final fallback - show error message
+                        console.log('Android attempt 4 - Show error message');
                         showFailureMessage();
                         return;
                     }
@@ -362,9 +370,10 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     return;
                 }
                 
-                // Retry setelah 2 detik jika belum berhasil (lebih cepat)
-                if (attempts < 3) {
-                    setTimeout(openApp, 2000); // Kurangi dari 3000 ke 2000
+                // Retry setelah interval yang berbeda berdasarkan attempt
+                if (attempts < 4) { // Increase dari 3 ke 4 untuk Android
+                    const retryDelay = attempts === 1 ? 1500 : 2000; // First retry lebih cepat
+                    setTimeout(openApp, retryDelay);
                 }
             }
             
@@ -376,11 +385,13 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 
                 if (${isAndroid}) {
                     if (attemptNum === 1) {
-                        attemptDetails.innerHTML = 'Step 1/3: Trying custom app scheme...';
+                        attemptDetails.innerHTML = 'Step 1/4: Trying custom app scheme (iframe)...';
                     } else if (attemptNum === 2) {
-                        attemptDetails.innerHTML = 'Step 2/3: Trying Android Intent URL...';
+                        attemptDetails.innerHTML = 'Step 2/4: Trying custom app scheme (direct)...';
+                    } else if (attemptNum === 3) {
+                        attemptDetails.innerHTML = 'Step 3/4: Trying Android Intent URL...';
                     } else {
-                        attemptDetails.innerHTML = 'Step 3/3: All methods failed, showing options...';
+                        attemptDetails.innerHTML = 'Step 4/4: All methods failed, showing options...';
                     }
                 } else if (${isIOS}) {
                     if (attemptNum === 1) {
@@ -402,25 +413,40 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             }
             
             function tryOpenWithIframe(scheme) {
-                // Method 1: Direct window.location (paling agresif untuk mobile)
-                try {
-                    window.location.href = scheme;
-                } catch (e) {
-                    console.log('Direct scheme failed:', e.message);
-                }
+                console.log('Trying to open scheme:', scheme);
                 
-                // Method 2: Iframe sebagai backup (untuk beberapa browser)
+                // Method 1: Create hidden iframe dengan scheme (lebih aman)
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
+                iframe.style.width = '1px';
+                iframe.style.height = '1px';
                 iframe.src = scheme;
                 document.body.appendChild(iframe);
+                
+                // Method 2: Setelah 500ms, coba window.location jika belum berhasil
+                setTimeout(function() {
+                    if (!appOpened) {
+                        console.log('Iframe method timeout, trying direct redirect');
+                        try {
+                            // Buat link hidden dan klik
+                            const link = document.createElement('a');
+                            link.href = scheme;
+                            link.style.display = 'none';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        } catch (e) {
+                            console.log('Link click failed:', e.message);
+                        }
+                    }
+                }, 500);
                 
                 // Cleanup iframe
                 setTimeout(function() {
                     if (iframe.parentNode) {
                         iframe.parentNode.removeChild(iframe);
                     }
-                }, 1000); // Kurangi cleanup time
+                }, 2000);
             }
             
             // Event listeners untuk deteksi app opened
@@ -439,15 +465,23 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             
             // Method 1: Visibility change (paling reliable)
             document.addEventListener('visibilitychange', function() {
-                if (document.hidden && Date.now() - startTime > 200) { // Kurangi dari 500 ke 200
+                if (document.hidden && Date.now() - startTime > 100) { // Lebih cepat lagi: 100ms
                     markAppOpened('visibility change');
                 }
             });
             
             // Method 2: Window blur  
             window.addEventListener('blur', function() {
-                if (Date.now() - startTime > 500) { // Kurangi dari 1000 ke 500
+                if (Date.now() - startTime > 300) { // Lebih cepat: 300ms
                     markAppOpened('window blur');
+                }
+            });
+            
+            // Method 3: Focus change
+            window.addEventListener('focus', function() {
+                // Jika kembali focus dalam waktu singkat, berarti app tidak terbuka
+                if (Date.now() - startTime < 1000 && attempts > 0) {
+                    console.log('Window regained focus quickly, app might not have opened');
                 }
             });
             
@@ -460,13 +494,13 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             console.log('Starting app opening process immediately...');
             openApp(); // Langsung jalankan tanpa setTimeout
             
-            // Fallback timeout - show download options (lebih cepat)
+            // Fallback timeout - show download options (sesuaikan dengan 4 attempts)
             setTimeout(function() {
                 if (!appOpened) {
-                    console.log('❌ App not opened after 6 seconds, showing fallback');
+                    console.log('❌ App not opened after 8 seconds, showing fallback');
                     showFailureMessage();
                 }
-            }, 6000); // Kurangi dari 10000 ke 6000
+            }, 8000); // Increase ke 8000 untuk accommodate 4 attempts
             
             // Error handling
             window.addEventListener('error', function(e) {
