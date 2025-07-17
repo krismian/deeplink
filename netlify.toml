@@ -1,0 +1,34 @@
+[build]
+  command = "npm install"
+  functions = "netlify/functions"
+  publish = "public"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/r/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[[redirects]]
+  from = "/generate-link"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[[redirects]]
+  from = "/firebase-link/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[[redirects]]
+  from = "/.well-known/assetlinks.json"
+  to = "/.netlify/functions/server"
+  status = 200
