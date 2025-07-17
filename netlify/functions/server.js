@@ -59,9 +59,39 @@ app.get('/r/:type', (req, res) => {
     return res.send(generateBotResponse(type));
   }
   
+  if (isAndroid) {
+    // Android: Coba berbagai kemungkinan scheme
+    const possibleSchemes = [
+      'jmo://cek-saldo',
+      'bpjstku://cek-saldo', 
+      'com.bpjstku://cek-saldo',
+      'intent://cek-saldo#Intent;scheme=jmo;package=com.bpjstku;end'
+    ];
+    
+    // Ambil scheme dari query parameter jika ada, atau gunakan default
+    const schemeIndex = parseInt(req.query.attempt || '0');
+    const targetScheme = possibleSchemes[schemeIndex] || possibleSchemes[0];
+    
+    console.log('Android detected - redirecting to:', targetScheme);
+    
+    // Jika sudah mencoba semua scheme, redirect ke Play Store
+    if (schemeIndex >= possibleSchemes.length) {
+      return res.redirect(CONFIG.playStoreUrl);
+    }
+    
+    return res.redirect(targetScheme);
+  }
+  
+  if (isIOS) {
+    // iOS: Gunakan landing page karena lebih reliable
+    return res.send(generateMobileRedirect(type, isIOS, isAndroid));
+  }
+  
   if (isMobile) {
+    // Mobile lain: landing page
     return res.send(generateMobileRedirect(type, isIOS, isAndroid));
   } else {
+    // Desktop users - show web version with app promotion
     return res.send(generateDesktopResponse(type));
   }
 });
