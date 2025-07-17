@@ -50,15 +50,23 @@ app.get('/r/:type', (req, res) => {
   const userAgent = req.get('User-Agent') || '';
   const referer = req.get('Referer') || '';
   
+  // Ambil semua query parameters dari URL
+  const queryParams = req.query;
+  const queryString = Object.keys(queryParams).length > 0 
+    ? '?' + new URLSearchParams(queryParams).toString() 
+    : '';
+  
   // Detect platform
   const isIOS = /iPad|iPhone|iPod/.test(userAgent);
   const isAndroid = /Android/.test(userAgent);
   const isMobile = isIOS || isAndroid;
   const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
   
-  // Log untuk analytics - termasuk source domain
+  // Log untuk analytics - termasuk source domain dan parameters
   console.log('Redirect request:', {
     type, 
+    queryParams,
+    queryString,
     userAgent: userAgent.slice(0, 100), 
     referer, 
     isMobile, 
@@ -73,17 +81,17 @@ app.get('/r/:type', (req, res) => {
   if (isAndroid) {
     // Android: Gunakan landing page dengan JavaScript untuk better fallback handling
     // Direct redirect ke custom scheme sering gagal di Android browser
-    return res.send(generateMobileRedirect(type, isIOS, isAndroid));
+    return res.send(generateMobileRedirect(type, isIOS, isAndroid, queryString));
   }
   
   if (isIOS) {
     // iOS: Gunakan landing page karena lebih reliable
-    return res.send(generateMobileRedirect(type, isIOS, isAndroid));
+    return res.send(generateMobileRedirect(type, isIOS, isAndroid, queryString));
   }
   
   if (isMobile) {
     // Mobile lain: landing page
-    return res.send(generateMobileRedirect(type, isIOS, isAndroid));
+    return res.send(generateMobileRedirect(type, isIOS, isAndroid, queryString));
   } else {
     // Desktop users - show web version with app promotion
     return res.send(generateDesktopResponse(type));
@@ -141,28 +149,39 @@ app.post('/generate-link', (req, res) => {
   });
 });
 
-function generateMobileRedirect(type, isIOS, isAndroid) {
-  const targetUrl = `${CONFIG.ownDomain}/r/${type}`; // URL untuk fallback browser
+function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
+  const targetUrl = `${CONFIG.ownDomain}/r/${type}${queryString}`; // URL untuk fallback browser dengan parameters
   
   // Android: Prioritas Intent URL, bukan custom scheme
   let primaryScheme, fallbackSchemes;
   
   if (isAndroid) {
-    // Android: Intent URL dengan parameter registration
-    primaryScheme = `intent://bpu?type=registration#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+    // Android: Intent URL dengan type dari URL path dan semua parameters dari URL
+    if (queryString) {
+      // Jika ada query parameters, teruskan ke app dengan type dari path
+      primaryScheme = `intent://${type}${queryString}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+    } else {
+      // Gunakan type dari URL path, jika tidak ada parameter tambahkan default
+      primaryScheme = `intent://${type}?type=registration#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+    }
+    
     fallbackSchemes = [
-      'bpjstku://bpu?type=registration',
-      'bpjstku://bpu',
+      `bpjstku://${type}${queryString}`,
+      `bpjstku://${type}?type=registration`,
+      `bpjstku://${type}`,
       'bpjstku://'
     ];
   } else {
-    // iOS: Custom scheme dengan parameter registration
-    if (type === 'product' || type === 'cek-saldo' || type === 'registration') {
-      primaryScheme = 'bpjstku://bpu?type=registration'; // Ke halaman registration
+    // iOS: Custom scheme dengan type dari URL path dan semua parameters dari URL
+    if (queryString) {
+      // Jika ada query parameters, teruskan ke app dengan type dari path
+      primaryScheme = `bpjstku://${type}${queryString}`;
     } else {
-      primaryScheme = `bpjstku://bpu?type=${type}`; // Dynamic parameter
+      // Gunakan type dari URL path, jika tidak ada parameter tambahkan default
+      primaryScheme = `bpjstku://${type}?type=registration`;
     }
-    fallbackSchemes = ['bpjstku://bpu', 'bpjstku://'];
+    
+    fallbackSchemes = [`bpjstku://${type}`, 'bpjstku://'];
   }
   
   return `
@@ -231,7 +250,7 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
     <body>
         <h2>Opening BPJSTKU App...</h2>
         <div class="spinner"></div>
-        <p>Redirecting to registration page...</p>
+        <p>Redirecting with parameters: ${queryString || 'type=registration'}</p>
         
         <div class="fallback-buttons">
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
@@ -244,13 +263,16 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
         
         <div class="debug-info">
             Platform: ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Other'}<br>
-            Target: bpu?type=registration
+            Target: ${type}${queryString || '?type=registration'}<br>
+            Full URL: ${targetUrl}
         </div>
         
         <script>
             console.log('=== BPJSTKU Deep Link Debug ===');
             console.log('Platform - Android:', ${isAndroid}, 'iOS:', ${isIOS});
             console.log('Target type:', '${type}');
+            console.log('Query string:', '${queryString}');
+            console.log('Primary scheme:', '${primaryScheme}');
             
             let appOpened = false;
             let attempts = 0;
@@ -265,12 +287,12 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
                 console.log('Attempt', attempts, 'to open app');
                 
                 if (${isAndroid}) {
-                    // Android: Gunakan Intent URL langsung untuk registration
-                    console.log('Android detected - using Intent URL for registration');
+                    // Android: Gunakan Intent URL dengan parameters
+                    console.log('Android detected - using Intent URL with parameters');
                     window.location.href = '${primaryScheme}';
                 } else if (${isIOS}) {
-                    // iOS: Gunakan custom scheme untuk registration
-                    console.log('iOS detected - using custom scheme for registration:', '${primaryScheme}');
+                    // iOS: Gunakan custom scheme dengan parameters
+                    console.log('iOS detected - using custom scheme with parameters:', '${primaryScheme}');
                     window.location.href = '${primaryScheme}';
                 } else {
                     // Other mobile
