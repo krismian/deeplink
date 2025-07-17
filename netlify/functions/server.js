@@ -158,28 +158,31 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
   if (isAndroid) {
     // Android: Coba custom scheme dulu, baru Intent URL
     if (queryString) {
+      // Jika ada query parameters, teruskan ke app dengan type dari path
       primaryScheme = `bpjstku://${type}${queryString}`;
       fallbackScheme = `intent://${type}${queryString}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
     } else {
-      primaryScheme = `bpjstku://${type}?type=${type}`;
-      fallbackScheme = `intent://${type}?type=${type}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+      // Jika tidak ada query parameters, gunakan type dari path saja tanpa parameter tambahan
+      primaryScheme = `bpjstku://${type}`;
+      fallbackScheme = `intent://${type}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
     }
     
     fallbackSchemes = [
       primaryScheme,
       fallbackScheme,
-      `bpjstku://${type}`,
       'bpjstku://'
     ];
   } else {
     // iOS: Custom scheme langsung
     if (queryString) {
+      // Jika ada query parameters, teruskan ke app dengan type dari path
       primaryScheme = `bpjstku://${type}${queryString}`;
     } else {
-      primaryScheme = `bpjstku://${type}?type=${type}`;
+      // Jika tidak ada query parameters, gunakan type dari path saja
+      primaryScheme = `bpjstku://${type}`;
     }
     
-    fallbackSchemes = [`bpjstku://${type}`, 'bpjstku://'];
+    fallbackSchemes = ['bpjstku://'];
   }
   
   return `
@@ -243,12 +246,37 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 opacity: 0.7;
                 font-family: monospace;
             }
+            .error-message {
+                margin-top: 30px;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 15px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+            }
+            .error-message h3 {
+                margin-top: 0;
+                color: #ffeb3b;
+            }
+            .error-message ul {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            .error-message li {
+                margin: 8px 0;
+            }
+            .attempt-info {
+                margin-top: 15px;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+                font-size: 14px;
+            }
         </style>
     </head>
     <body>
         <h2>Opening BPJSTKU App...</h2>
         <div class="spinner"></div>
-        <p>Redirecting with parameters: ${queryString || '?type=' + type}</p>
+        <p>Redirecting with parameters: ${queryString || 'no parameters'}</p>
         
         <div class="fallback-buttons">
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
@@ -259,10 +287,32 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             </a>
         </div>
         
+        <div class="error-message" style="display: none;">
+            <h3>⚠️ Unable to Open App</h3>
+            <p>We tried multiple methods to open the BPJSTKU app but were unsuccessful.</p>
+            <p><strong>Possible reasons:</strong></p>
+            <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
+                <li>App is not installed on your device</li>
+                <li>App version doesn't support this deep link</li>
+                <li>Browser restrictions preventing app launch</li>
+            </ul>
+            <p><strong>What you can do:</strong></p>
+            <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
+                <li>Download the latest version of BPJSTKU app</li>
+                <li>Try opening the link in a different browser</li>
+                <li>Continue using our web version</li>
+            </ul>
+        </div>
+        
         <div class="debug-info">
             Platform: ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Other'}<br>
-            Target: ${type}${queryString || '?type=' + type}<br>
+            Target: ${type}${queryString || ''}<br>
             Full URL: ${targetUrl}
+        </div>
+        
+        <div class="attempt-info" id="attemptInfo" style="display: none;">
+            <strong>Attempting to open app...</strong>
+            <div id="attemptDetails"></div>
         </div>
         
         <script>
@@ -284,6 +334,9 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 attempts++;
                 console.log('Attempt', attempts, 'to open app');
                 
+                // Show attempt info
+                updateAttemptInfo(attempts);
+                
                 if (${isAndroid}) {
                     if (attempts === 1) {
                         // Android: Coba custom scheme dulu (lebih universal)
@@ -296,7 +349,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     } else {
                         // Final fallback ke Play Store
                         console.log('Android attempt 3 - Play Store');
-                        window.location.href = '${CONFIG.playStoreUrl}';
+                        showFailureMessage();
                         return;
                     }
                 } else if (${isIOS}) {
@@ -307,13 +360,13 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     } else {
                         // Fallback ke App Store
                         console.log('iOS attempt 2 - App Store');
-                        window.location.href = '${CONFIG.appStoreUrl}';
+                        showFailureMessage();
                         return;
                     }
                 } else {
                     // Other mobile
                     console.log('Other mobile platform');
-                    window.location.href = '${CONFIG.playStoreUrl}';
+                    showFailureMessage();
                     return;
                 }
                 
@@ -321,6 +374,39 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 if (attempts < 3) {
                     setTimeout(openApp, 3000);
                 }
+            }
+            
+            function updateAttemptInfo(attemptNum) {
+                const attemptInfo = document.getElementById('attemptInfo');
+                const attemptDetails = document.getElementById('attemptDetails');
+                
+                attemptInfo.style.display = 'block';
+                
+                if (${isAndroid}) {
+                    if (attemptNum === 1) {
+                        attemptDetails.innerHTML = 'Step 1/3: Trying custom app scheme...';
+                    } else if (attemptNum === 2) {
+                        attemptDetails.innerHTML = 'Step 2/3: Trying Android Intent URL...';
+                    } else {
+                        attemptDetails.innerHTML = 'Step 3/3: All methods failed, showing options...';
+                    }
+                } else if (${isIOS}) {
+                    if (attemptNum === 1) {
+                        attemptDetails.innerHTML = 'Step 1/2: Trying custom app scheme...';
+                    } else {
+                        attemptDetails.innerHTML = 'Step 2/2: App not responding, showing options...';
+                    }
+                }
+            }
+            
+            function showFailureMessage() {
+                document.querySelector('.spinner').style.display = 'none';
+                document.querySelector('h2').textContent = 'Unable to Open App';
+                document.querySelector('p').textContent = 'We encountered issues opening the BPJSTKU app.';
+                document.querySelector('.error-message').style.display = 'block';
+                document.querySelector('.fallback-buttons').style.opacity = '1';
+                document.querySelector('.fallback-buttons').style.animation = 'none';
+                document.getElementById('attemptInfo').style.display = 'none';
             }
             
             function tryOpenWithIframe(scheme) {
@@ -359,6 +445,8 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     console.log('✅ App opened successfully via', source);
                     document.querySelector('.spinner').style.display = 'none';
                     document.querySelector('h2').textContent = 'Opening app...';
+                    document.querySelector('p').textContent = 'App is launching, please wait...';
+                    document.getElementById('attemptInfo').style.display = 'none';
                 }
             }
             
@@ -390,10 +478,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 setTimeout(function() {
                     if (!appOpened && attempts === 0) {
                         console.log('❌ App not opened after 10 seconds, showing fallback');
-                        document.querySelector('.fallback-buttons').style.opacity = '1';
-                        document.querySelector('.fallback-buttons').style.animation = 'none';
-                        document.querySelector('h2').textContent = 'App not installed?';
-                        document.querySelector('.spinner').style.display = 'none';
+                        showFailureMessage();
                     }
                 }, 10000); // Increased from 5000 to 10000
             }, 1000);
