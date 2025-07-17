@@ -96,7 +96,14 @@ app.post('/generate-link', (req, res) => {
 
 function generateMobileRedirect(type, isIOS, isAndroid) {
   const targetUrl = `${CONFIG.ownDomain}/r/${type}`; // URL untuk fallback browser
-  const customScheme = `myapp://${type}`; // Custom scheme aplikasi
+  
+  // Custom scheme untuk JMO - sesuaikan dengan yang ada di AndroidManifest.xml
+  let customScheme;
+  if (type === 'product' || type === 'cek-saldo') {
+    customScheme = 'jmo://cek-saldo'; // Langsung ke halaman cek-saldo
+  } else {
+    customScheme = `jmo://${type}`; // Scheme JMO untuk halaman lain
+  }
   
   return `
     <!DOCTYPE html>
@@ -173,7 +180,7 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
             console.log('Platform detection - Android: ${isAndroid}, iOS: ${isIOS}');
             
             let attempts = 0;
-            const maxAttempts = 2;
+            const maxAttempts = 4;
             let appOpened = false;
             
             function tryOpenApp() {
@@ -184,9 +191,17 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
                 
                 if (${isAndroid}) {
                     if (attempts === 1) {
-                        // Android: Coba custom scheme dulu
-                        console.log('Trying custom scheme: ${customScheme}');
+                        // Android: Coba custom scheme JMO
+                        console.log('Trying JMO scheme: ${customScheme}');
                         window.location = '${customScheme}';
+                    } else if (attempts === 2) {
+                        // Coba scheme alternatif
+                        console.log('Trying alternative scheme: bpjstku://cek-saldo');
+                        window.location = 'bpjstku://cek-saldo';
+                    } else if (attempts === 3) {
+                        // Coba intent URL
+                        console.log('Trying intent URL');
+                        window.location = 'intent://cek-saldo#Intent;scheme=jmo;package=com.bpjstku;end';
                     } else {
                         // Fallback ke Play Store
                         console.log('Redirecting to Play Store');
@@ -205,8 +220,8 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
                 }
                 
                 // Retry jika belum berhasil
-                if (attempts < maxAttempts) {
-                    setTimeout(tryOpenApp, 2500);
+                if (attempts < 4) {
+                    setTimeout(tryOpenApp, 2000);
                 }
             }
             
