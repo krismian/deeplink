@@ -60,12 +60,12 @@ app.get('/r/:type', (req, res) => {
   }
   
   if (isAndroid) {
-    // Android: Coba berbagai kemungkinan scheme
+    // Android: Gunakan scheme bpjstku yang benar
     const possibleSchemes = [
-      'jmo://cek-saldo',
-      'bpjstku://cek-saldo', 
-      'com.bpjstku://cek-saldo',
-      'intent://cek-saldo#Intent;scheme=jmo;package=com.bpjstku;end'
+      'bpjstku://cek-saldo',  // Scheme utama untuk cek saldo
+      'bpjstku://',           // Scheme ke halaman utama
+      `bpjstku://${type}`,    // Scheme dengan parameter type
+      `intent://cek-saldo#Intent;scheme=bpjstku;package=com.bpjstku;end`
     ];
     
     // Ambil scheme dari query parameter jika ada, atau gunakan default
@@ -135,12 +135,12 @@ app.post('/generate-link', (req, res) => {
 function generateMobileRedirect(type, isIOS, isAndroid) {
   const targetUrl = `${CONFIG.ownDomain}/r/${type}`; // URL untuk fallback browser
   
-  // Custom scheme untuk JMO - sesuaikan dengan yang ada di AndroidManifest.xml
+  // Custom scheme untuk BPJSTKU app - menggunakan scheme yang benar
   let customScheme;
   if (type === 'product' || type === 'cek-saldo') {
-    customScheme = 'jmo://cek-saldo'; // Langsung ke halaman cek-saldo
+    customScheme = 'bpjstku://cek-saldo'; // Langsung ke halaman cek-saldo
   } else {
-    customScheme = `jmo://${type}`; // Scheme JMO untuk halaman lain
+    customScheme = `bpjstku://${type}`; // Scheme BPJSTKU untuk halaman lain
   }
   
   const androidAppLink = `${CONFIG.ownDomain}/r/${type}`;
@@ -231,17 +231,17 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
                 
                 if (${isAndroid}) {
                     if (attempts === 1) {
-                        // Android: Coba custom scheme JMO
-                        console.log('Trying JMO scheme: ${customScheme}');
+                        // Android: Coba custom scheme BPJSTKU
+                        console.log('Trying BPJSTKU scheme: ${customScheme}');
                         window.location = '${customScheme}';
                     } else if (attempts === 2) {
                         // Coba scheme alternatif
-                        console.log('Trying alternative scheme: bpjstku://cek-saldo');
-                        window.location = 'bpjstku://cek-saldo';
+                        console.log('Trying alternative scheme: bpjstku://');
+                        window.location = 'bpjstku://';
                     } else if (attempts === 3) {
                         // Coba intent URL
                         console.log('Trying intent URL');
-                        window.location = 'intent://cek-saldo#Intent;scheme=jmo;package=com.bpjstku;end';
+                        window.location = 'intent://cek-saldo#Intent;scheme=bpjstku;package=com.bpjstku;end';
                     } else {
                         // Fallback ke Play Store
                         console.log('Redirecting to Play Store');
