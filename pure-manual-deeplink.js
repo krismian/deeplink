@@ -18,12 +18,33 @@ app.use(express.static('public'));
 function detectPlatform(userAgent) {
   const ua = userAgent.toLowerCase();
   
+  // More specific mobile detection
   if (/android/i.test(ua)) return 'android';
   if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+  
+  // Mobile browsers (including mobile Chrome, Safari, etc.)
+  if (/mobile/i.test(ua) && !/tablet/i.test(ua)) {
+    if (/android/i.test(ua)) return 'android';
+    if (/iphone|ipod/i.test(ua)) return 'ios';
+    // Default mobile to android if unclear
+    return 'android';
+  }
+  
+  // Tablet detection
+  if (/ipad/i.test(ua) || (/android/i.test(ua) && /tablet/i.test(ua))) {
+    return 'tablet';
+  }
+  
+  // Desktop detection
   if (/windows nt/i.test(ua)) return 'windows';
   if (/macintosh|mac os x/i.test(ua)) return 'mac';
   if (/linux/i.test(ua)) return 'linux';
+  
+  // Bot detection
   if (/bot|crawler|spider|scraper/i.test(ua)) return 'bot';
+  
+  // Default fallback to android for unknown mobile-like agents
+  if (/mobile|phone/i.test(ua)) return 'android';
   
   return 'unknown';
 }
@@ -110,35 +131,47 @@ function generateSmartRedirectPage(type, queryParams) {
                 android: [
                     {
                         name: 'Custom Scheme',
-                        url: '${customUrl}'
+                        url: '${customUrl}',
+                        timeout: 2500
                     },
                     {
                         name: 'Intent URL',
-                        url: 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end'
+                        url: 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end',
+                        timeout: 2000
+                    },
+                    {
+                        name: 'Market Intent',
+                        url: 'market://details?id=${CONFIG.androidPackage}',
+                        timeout: 1500
                     },
                     {
                         name: 'Play Store',
-                        url: 'https://play.google.com/store/apps/details?id=${CONFIG.androidPackage}'
+                        url: 'https://play.google.com/store/apps/details?id=${CONFIG.androidPackage}',
+                        timeout: 0
                     }
                 ],
                 ios: [
                     {
                         name: 'Custom Scheme',
-                        url: '${customUrl}'
+                        url: '${customUrl}',
+                        timeout: 2500
                     },
                     {
                         name: 'Universal Link',
-                        url: '${CONFIG.domain}/app/${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}'
+                        url: '${CONFIG.domain}/app/${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}',
+                        timeout: 2000
                     },
                     {
                         name: 'App Store',
-                        url: 'https://apps.apple.com/app/id${CONFIG.iosAppId}'
+                        url: 'https://apps.apple.com/app/id${CONFIG.iosAppId}',
+                        timeout: 0
                     }
                 ],
                 desktop: [
                     {
                         name: 'Protocol Handler',
-                        url: '${customUrl}'
+                        url: '${customUrl}',
+                        timeout: 1000
                     }
                 ]
             };
@@ -153,14 +186,45 @@ function generateSmartRedirectPage(type, queryParams) {
 
             function detectUserAgent() {
                 const ua = navigator.userAgent.toLowerCase();
+                
+                // More aggressive mobile detection
                 if (/android/i.test(ua)) return 'android';
                 if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+                if (/mobile/i.test(ua) && !/tablet/i.test(ua)) {
+                    // Default mobile to android if platform unclear
+                    return 'android';
+                }
+                
                 return 'desktop';
+            }
+
+            function immediateAppAttempt() {
+                // Try to open app immediately without delay
+                const platform = detectUserAgent();
+                const customScheme = '${customUrl}';
+                
+                updateStatus('Trying to open app...');
+                
+                // Create invisible iframe for app opening
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = customScheme;
+                document.body.appendChild(iframe);
+                
+                // Also try direct window location
+                try {
+                    window.location.href = customScheme;
+                } catch (e) {
+                    console.log('Direct location failed, trying alternatives...');
+                }
+                
+                // Start the full fallback process after short delay
+                setTimeout(attemptAppOpen, 500);
             }
 
             async function attemptAppOpen() {
                 const platform = detectUserAgent();
-                const platformStrategies = strategies[platform] || strategies.desktop;
+                const platformStrategies = strategies[platform] || strategies.android;
                 const maxAttempts = Math.min(${CONFIG.maxRedirectAttempts}, platformStrategies.length);
                 
                 for (let currentAttempt = 0; currentAttempt < maxAttempts; currentAttempt++) {
@@ -172,14 +236,36 @@ function generateSmartRedirectPage(type, queryParams) {
                     updateProgress((attemptNum / maxAttempts) * 100);
                     
                     try {
-                        window.location.href = strategy.url;
+                        // Create hidden iframe for app schemes
+                        if (strategy.name.includes('Scheme') || strategy.name.includes('Intent')) {
+                            const iframe = document.createElement('iframe');
+                            iframe.style.display = 'none';
+                            iframe.src = strategy.url;
+                            document.body.appendChild(iframe);
+                            
+                            // Also try window.location as backup
+                            setTimeout(() => {
+                                window.location.href = strategy.url;
+                            }, 100);
+                        } else {
+                            // For store links, use direct navigation
+                            window.location.href = strategy.url;
+                        }
                         
                         // Wait to see if app opens
-                        await new Promise(resolve => setTimeout(resolve, ${CONFIG.attemptDelay}));
+                        const waitTime = strategy.timeout || ${CONFIG.attemptDelay};
+                        if (waitTime > 0) {
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
+                        }
                         
-                        // If we're still here, app didn't open
-                        if (currentAttempt < maxAttempts - 1) {
+                        // If we're still here and it's not the last attempt, continue
+                        if (currentAttempt < maxAttempts - 1 && strategy.timeout > 0) {
                             updateStatus('App not found, trying another method...');
+                        }
+                        
+                        // If this is a store link (timeout = 0), break the loop
+                        if (strategy.timeout === 0) {
+                            break;
                         }
                         
                     } catch (error) {
@@ -194,8 +280,14 @@ function generateSmartRedirectPage(type, queryParams) {
                 updateProgress(100);
             }
 
-            // Start the process
-            setTimeout(attemptAppOpen, 1000);
+            // Start immediately when page loads
+            window.addEventListener('load', immediateAppAttempt);
+            
+            // Also start on DOMContentLoaded as backup
+            document.addEventListener('DOMContentLoaded', immediateAppAttempt);
+            
+            // Emergency fallback
+            setTimeout(immediateAppAttempt, 100);
         </script>
     </body>
     </html>
