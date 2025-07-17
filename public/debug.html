@@ -152,30 +152,54 @@
         // Test mobile
         async function testMobile(platform) {
             try {
+                updateStatus('Testing ' + platform + ' deep linking...');
+                
+                const testData = {
+                    type: 'cek-saldo',
+                    feature: 'jht',
+                    source: 'debug-' + platform,
+                    platform: platform
+                };
+                
+                console.log('Sending API request:', testData);
+                
                 const response = await fetch('/api/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'User-Agent': platform === 'android' 
-                            ? 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 Mobile'
-                            : 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 Mobile'
+                            ? 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
+                            : 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
                     },
-                    body: JSON.stringify({
-                        type: 'cek-saldo',
-                        feature: 'jht',
-                        source: 'debug-' + platform
-                    })
+                    body: JSON.stringify(testData)
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const result = await response.json();
                 document.getElementById('api-results').textContent = JSON.stringify(result, null, 2);
                 
-                if (result.shortUrl) {
-                    window.open(result.shortUrl, '_blank');
+                if (result.link) {
+                    updateStatus('Opening test link: ' + result.link);
+                    window.open(result.link, '_blank');
+                } else {
+                    updateStatus('API response received but no link generated');
                 }
             } catch (error) {
-                document.getElementById('api-results').textContent = 'Error: ' + error.message;
+                console.error('API Test Error:', error);
+                document.getElementById('api-results').textContent = 'Error: ' + error.message + '\n\nStack: ' + error.stack;
+                updateStatus('API test failed: ' + error.message);
             }
+        }
+        
+        function updateStatus(message) {
+            const statusElement = document.querySelector('.debug-info h3');
+            if (statusElement) {
+                statusElement.textContent = 'Status: ' + message;
+            }
+            console.log('Status:', message);
         }
 
         // Generate QR code for testing

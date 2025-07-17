@@ -126,6 +126,9 @@ function generateSmartRedirectPage(type, queryParams) {
                 <button onclick="manualRetry()" class="btn" style="background: rgba(255,165,0,0.2); border-color: rgba(255,165,0,0.3);">
                     🔄 Try Again
                 </button>
+                <button onclick="directAppAttempt()" class="btn" style="background: rgba(0,255,0,0.2); border-color: rgba(0,255,0,0.3);">
+                    🚀 Force App Launch
+                </button>
             </div>
         </div>
 
@@ -233,40 +236,57 @@ function generateSmartRedirectPage(type, queryParams) {
                 const platform = detectUserAgent();
                 const customScheme = '${customUrl}';
                 
-                updateStatus('Detecting platform: ' + platform);
+                updateStatus('Platform detected: ' + platform);
+                console.log('Starting immediate app attempt for platform:', platform);
                 
-                // For Android devices, try multiple methods immediately
+                // For Android devices, try multiple methods aggressively
                 if (platform === 'android') {
-                    updateStatus('Android detected - trying to open BPJSTKU app...');
+                    updateStatus('🤖 Android detected - Launching BPJSTKU app...');
                     
-                    // Method 1: Direct custom scheme
+                    // Method 1: Android Intent URL (most reliable for Android)
+                    const intentUrl = 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end';
+                    
+                    console.log('Trying Android Intent URL:', intentUrl);
+                    
                     try {
-                        window.location.href = customScheme;
+                        window.location.href = intentUrl;
                     } catch (e) {
-                        console.log('Custom scheme failed:', e);
+                        console.log('Intent URL failed:', e);
                     }
                     
-                    // Method 2: Android Intent URL (after short delay)
+                    // Method 2: Direct custom scheme (fallback)
                     setTimeout(() => {
+                        console.log('Trying custom scheme as fallback:', customScheme);
                         try {
-                            const intentUrl = 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end';
-                            window.location.href = intentUrl;
+                            window.location.href = customScheme;
                         } catch (e) {
-                            console.log('Intent URL failed:', e);
+                            console.log('Custom scheme failed:', e);
                         }
-                    }, 300);
+                    }, 500);
                     
-                    // Method 3: Hidden iframe attempt
+                    // Method 3: Hidden iframe (additional attempt)
                     setTimeout(() => {
+                        console.log('Trying hidden iframe method');
                         const iframe = document.createElement('iframe');
                         iframe.style.display = 'none';
+                        iframe.style.width = '1px';
+                        iframe.style.height = '1px';
                         iframe.src = customScheme;
                         document.body.appendChild(iframe);
-                    }, 100);
+                        
+                        // Remove iframe after attempt
+                        setTimeout(() => {
+                            if (iframe.parentNode) {
+                                iframe.parentNode.removeChild(iframe);
+                            }
+                        }, 2000);
+                    }, 1000);
                     
                 } else if (platform === 'ios') {
-                    updateStatus('iOS detected - trying to open BPJSTKU app...');
+                    updateStatus('🍎 iOS detected - Launching BPJSTKU app...');
                     
+                    // For iOS, try custom scheme first
+                    console.log('Trying iOS custom scheme:', customScheme);
                     try {
                         window.location.href = customScheme;
                     } catch (e) {
@@ -274,7 +294,7 @@ function generateSmartRedirectPage(type, queryParams) {
                     }
                     
                 } else {
-                    updateStatus('Desktop detected - trying protocol handler...');
+                    updateStatus('💻 Desktop detected - Trying protocol handler...');
                     
                     try {
                         window.location.href = customScheme;
@@ -284,7 +304,7 @@ function generateSmartRedirectPage(type, queryParams) {
                 }
                 
                 // Start the full fallback process after delay
-                setTimeout(attemptAppOpen, 1000);
+                setTimeout(attemptAppOpen, 2000);
             }
 
             async function attemptAppOpen() {
@@ -325,11 +345,13 @@ function generateSmartRedirectPage(type, queryParams) {
                         
                         // If we're still here and it's not the last attempt, continue
                         if (currentAttempt < maxAttempts - 1 && strategy.timeout > 0) {
-                            updateStatus('App not found, trying another method...');
+                            updateStatus('App not detected, trying alternative method...');
+                            console.log('App not opened, continuing to next strategy');
                         }
                         
                         // If this is a store link (timeout = 0), break the loop
                         if (strategy.timeout === 0) {
+                            updateStatus('Redirecting to app store for manual installation...');
                             break;
                         }
                         
@@ -343,6 +365,41 @@ function generateSmartRedirectPage(type, queryParams) {
                 
                 updateStatus('Unable to open app. Please download from app store.');
                 updateProgress(100);
+            }
+
+            function directAppAttempt() {
+                updateStatus('🚀 Force launching app...');
+                const platform = detectUserAgent();
+                const customScheme = '${customUrl}';
+                
+                console.log('Direct app attempt for platform:', platform);
+                
+                if (platform === 'android') {
+                    // Try all Android methods simultaneously
+                    const methods = [
+                        'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end',
+                        customScheme,
+                        'market://details?id=${CONFIG.androidPackage}'
+                    ];
+                    
+                    methods.forEach((method, index) => {
+                        setTimeout(() => {
+                            console.log('Trying method', index + 1, ':', method);
+                            try {
+                                window.location.href = method;
+                            } catch (e) {
+                                console.log('Method', index + 1, 'failed:', e);
+                            }
+                        }, index * 200);
+                    });
+                } else {
+                    // For other platforms, try custom scheme
+                    try {
+                        window.location.href = customScheme;
+                    } catch (e) {
+                        console.log('Direct app attempt failed:', e);
+                    }
+                }
             }
 
             function manualRetry() {
