@@ -12,8 +12,8 @@ const CONFIG = {
   iosBundleId: 'com.yourapp.ios',
   iosAppId: 'YOUR_IOS_APP_ID',
   
-  // Your domain
-  ownDomain: 'https://yourdomain.com',
+  // Your domain - Updated dengan URL Netlify yang sebenarnya
+  ownDomain: 'https://elegant-kleicha-42b5e8.netlify.app',
   
   // App store links
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.bpjstku',
