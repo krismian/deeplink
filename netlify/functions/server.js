@@ -5,7 +5,7 @@ const app = express();
 
 // Configuration
 const CONFIG = {
-  // Firebase config (existing)
+  // Firebase config (keep for backward compatibility)
   firebaseDomain: 'https://individual-engagement-3.web.app',
   
   // App config
@@ -13,32 +13,38 @@ const CONFIG = {
   iosBundleId: 'com.yourapp.ios',
   iosAppId: 'YOUR_IOS_APP_ID',
   
-  // Your domain - URL Netlify yang sebenarnya
+  // Your domain - URL Netlify (new manual system)
   ownDomain: 'https://elegant-kleicha-42b5e8.netlify.app',
   
   // App store links
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.bpjstku',
-  appStoreUrl: 'https://apps.apple.com/app/YOUR_IOS_APP_ID'
+  appStoreUrl: 'https://apps.apple.com/app/YOUR_IOS_APP_ID',
+  
+  // Strategy: hybrid system - support both Firebase and manual
+  useHybridMode: true // Firebase + Manual simultaneously
 };
 
 // Middleware
 app.use(express.json());
 
-// Android App Links verification
+// Android App Links verification - TIDAK PERLU (app native tidak diubah)
+// Firebase domain tetap handle App Links verification
+// Manual domain hanya handle custom scheme fallback
 app.get('/.well-known/assetlinks.json', (req, res) => {
+  // Optional: untuk future app update, tapi tidak wajib untuk sistem sekarang
   res.json([{
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
       "package_name": CONFIG.androidPackage,
       "sha256_cert_fingerprints": [
-        "ADD_YOUR_SHA256_FINGERPRINT_HERE" // Ganti dengan SHA256 dari keystore Android
+        "TIDAK_DIPERLUKAN_UNTUK_BACKWARD_COMPATIBILITY" // Firebase tetap handle verification
       ]
     }
   }]);
 });
 
-// Main redirect endpoint
+// Main redirect endpoint - Support transisi dari Firebase
 app.get('/r/:type', (req, res) => {
   const { type } = req.params;
   const userAgent = req.get('User-Agent') || '';
@@ -50,9 +56,14 @@ app.get('/r/:type', (req, res) => {
   const isMobile = isIOS || isAndroid;
   const isBot = /bot|crawler|spider|crawling/i.test(userAgent);
   
-  // Log untuk analytics
+  // Log untuk analytics - termasuk source domain
   console.log('Redirect request:', {
-    type, userAgent: userAgent.slice(0, 100), referer, isMobile, isBot
+    type, 
+    userAgent: userAgent.slice(0, 100), 
+    referer, 
+    isMobile, 
+    isBot,
+    source: referer.includes('firebase') ? 'firebase' : 'manual'
   });
   
   if (isBot) {
@@ -110,25 +121,40 @@ app.get('/firebase-link/:type', (req, res) => {
   res.json({ firebaseLink, targetUrl });
 });
 
-// API endpoint untuk generate link dari app
+// Enhanced generate link - Support both Firebase dan Manual
 app.post('/generate-link', (req, res) => {
-  const { type, useFirebase = false, metadata = {} } = req.body;
+  const { type, useFirebase = CONFIG.useHybridMode, metadata = {} } = req.body;
   
-  let link;
+  let primaryLink, fallbackLink;
+  
   if (useFirebase) {
+    // Primary: Firebase Dynamic Link (untuk app existing)
     const targetUrl = `${CONFIG.ownDomain}/r/${type}`;
-    link = `${CONFIG.firebaseDomain}/?` + 
+    primaryLink = `${CONFIG.firebaseDomain}/?` + 
       `link=${encodeURIComponent(targetUrl)}` +
       `&apn=${CONFIG.androidPackage}` +
       `&ibi=${CONFIG.iosBundleId}`;
+    
+    // Fallback: Manual direct link
+    fallbackLink = `${CONFIG.ownDomain}/r/${type}`;
   } else {
-    link = `${CONFIG.ownDomain}/r/${type}`;
+    // Primary: Manual direct link
+    primaryLink = `${CONFIG.ownDomain}/r/${type}`;
+    
+    // Fallback: Firebase Dynamic Link
+    const targetUrl = `${CONFIG.ownDomain}/r/${type}`;
+    fallbackLink = `${CONFIG.firebaseDomain}/?` + 
+      `link=${encodeURIComponent(targetUrl)}` +
+      `&apn=${CONFIG.androidPackage}` +
+      `&ibi=${CONFIG.iosBundleId}`;
   }
   
   res.json({ 
-    link, 
-    type: useFirebase ? 'firebase' : 'manual',
-    metadata 
+    primaryLink,
+    fallbackLink,
+    type: useFirebase ? 'firebase-primary' : 'manual-primary',
+    metadata,
+    strategy: 'hybrid-backward-compatible'
   });
 });
 
