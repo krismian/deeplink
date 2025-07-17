@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QUICK TEST - Android Deep Link</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.5; }
+        .test-link { 
+            display: block; padding: 15px; margin: 10px 0; 
+            background: #007bff; color: white; text-decoration: none; 
+            border-radius: 5px; text-align: center; font-size: 18px;
+        }
+        .info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .log { background: #333; color: #0f0; padding: 10px; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 QUICK TEST</h1>
+    
+    <div class="info">
+        <strong>Strategy Baru (Simple):</strong><br>
+        ✅ Direct window.location.href (no iframe)<br>
+        ✅ Faster retry: 1 detik<br>
+        ✅ Error timeout: 5 detik<br>
+        ✅ Better logging
+    </div>
+
+    <a href="https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo" class="test-link">
+        📱 TEST CEK SALDO
+    </a>
+    
+    <a href="https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo?user=123&action=view" class="test-link">
+        📱 TEST WITH PARAMETERS
+    </a>
+    
+    <div class="info">
+        <strong>Expected Flow:</strong><br>
+        1. Loading page dengan "Opening BPJSTKU App..."<br>
+        2. Step 1/4: Custom scheme (direct)<br>
+        3. Step 2/4: Custom scheme retry<br>
+        4. Step 3/4: Android Intent URL<br>
+        5. Step 4/4: Error message (jika gagal)<br>
+        <br>
+        <strong>Total time: ~5 detik</strong>
+    </div>
+    
+    <div class="log" id="testLog" style="display:none;">
+        <div>🔍 Debug Console akan muncul di sini</div>
+    </div>
+    
+    <script>
+        // Show current environment
+        document.getElementById('testLog').style.display = 'block';
+        document.getElementById('testLog').innerHTML = `
+            <div>🔍 Test Environment:</div>
+            <div>User Agent: ${navigator.userAgent}</div>
+            <div>Is Android: ${/Android/.test(navigator.userAgent)}</div>
+            <div>Current Time: ${new Date().toLocaleString()}</div>
+            <div>---</div>
+            <div>Test links above akan buka di tab baru.</div>
+            <div>Buka Developer Console (F12) untuk debug log detail.</div>
+        `;
+        
+        // Override link behavior untuk buka di tab baru
+        document.querySelectorAll('.test-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.open(this.href, '_blank');
+            });
+        });
+    </script>
+</body>
+</html>
