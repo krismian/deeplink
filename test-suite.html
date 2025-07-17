@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Deep Link Testing Suite</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+        }
+        .test-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        .test-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            margin: 8px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .test-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .platform-info {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #FFD700;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .success { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+        .info { background: rgba(33, 150, 243, 0.2); color: #2196F3; }
+        .warning { background: rgba(255, 152, 0, 0.2); color: #FF9800; }
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Deep Link Testing Suite</h1>
+        <p>Test Pure Manual Deep Link System pada berbagai platform dan skenario</p>
+        
+        <div class="platform-info">
+            <h3>🔍 Platform Detection</h3>
+            <div id="platform-info">Detecting...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📱 Basic Deep Links</h3>
+            <p>Test basic deep link functionality tanpa parameter:</p>
+            
+            <a href="/r/cek-saldo" class="test-link" target="_blank">
+                📊 Cek Saldo
+            </a>
+            <a href="/r/bayar-iuran" class="test-link" target="_blank">
+                💰 Bayar Iuran
+            </a>
+            <a href="/r/riwayat-transaksi" class="test-link" target="_blank">
+                📜 Riwayat Transaksi
+            </a>
+            <a href="/r/profil" class="test-link" target="_blank">
+                👤 Profil
+            </a>
+            <a href="/r/notifikasi" class="test-link" target="_blank">
+                🔔 Notifikasi
+            </a>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔗 Links dengan Parameters</h3>
+            <p>Test deep links dengan query parameters:</p>
+            
+            <a href="/r/cek-saldo?userId=12345&action=view" class="test-link" target="_blank">
+                📊 Cek Saldo + UserID
+            </a>
+            <a href="/r/bayar-iuran?amount=50000&method=bca&userId=12345" class="test-link" target="_blank">
+                💰 Bayar Iuran + Amount
+            </a>
+            <a href="/r/profil?userId=12345&tab=settings&edit=true" class="test-link" target="_blank">
+                👤 Profil + Edit Mode
+            </a>
+            <a href="/r/riwayat-transaksi?startDate=2025-01-01&endDate=2025-12-31&type=all" class="test-link" target="_blank">
+                📜 Riwayat + Date Range
+            </a>
+        </div>
+        
+        <div class="test-section">
+            <h3>🌐 API Testing</h3>
+            <p>Test sistem APIs dan health checks:</p>
+            
+            <a href="/health" class="test-link" target="_blank">
+                💚 Health Check
+            </a>
+            <a href="/api/analytics/cek-saldo" class="test-link" target="_blank">
+                📈 Analytics - Cek Saldo
+            </a>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="testGenerateLink()" class="test-link" style="border: none; cursor: pointer;">
+                    🔗 Test Generate Link API
+                </button>
+                <div id="api-result" style="margin-top: 10px;"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>❌ Error Testing</h3>
+            <p>Test error handling dan invalid links:</p>
+            
+            <a href="/r/invalid-type" class="test-link" target="_blank">
+                ❌ Invalid Type
+            </a>
+            <a href="/r/" class="test-link" target="_blank">
+                ❌ Empty Type
+            </a>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Test Results</h3>
+            <div id="test-results">
+                <div class="info">✅ Platform detection completed</div>
+                <div class="success">✅ All test links generated successfully</div>
+                <div class="warning">⚠️ Test links pada device/platform yang sesuai untuk hasil optimal</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📱 Mobile Testing Instructions</h3>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                <p><strong>Android Testing:</strong></p>
+                <ol style="font-size: 14px; line-height: 1.6;">
+                    <li>Buka halaman ini di Android browser (Chrome/Firefox)</li>
+                    <li>Klik salah satu test link di atas</li>
+                    <li>Sistem akan mencoba buka app dengan <code>bpjstku://</code> scheme</li>
+                    <li>Jika app tidak terbuka, akan fallback ke Play Store</li>
+                </ol>
+                
+                <p><strong>iOS Testing:</strong></p>
+                <ol style="font-size: 14px; line-height: 1.6;">
+                    <li>Buka halaman ini di iOS browser (Safari/Chrome)</li>
+                    <li>Klik salah satu test link di atas</li>
+                    <li>Sistem akan mencoba buka app dengan <code>bpjstku://</code> scheme</li>
+                    <li>Jika app tidak terbuka, akan fallback ke App Store</li>
+                </ol>
+                
+                <p><strong>Desktop Testing:</strong></p>
+                <ol style="font-size: 14px; line-height: 1.6;">
+                    <li>Link akan menampilkan QR code</li>
+                    <li>Scan QR code dengan mobile device</li>
+                    <li>Mobile device akan redirect ke app</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Platform detection and display
+        function detectPlatform() {
+            const ua = navigator.userAgent.toLowerCase();
+            let platform = 'Unknown';
+            let details = '';
+            
+            if (/android/.test(ua)) {
+                platform = 'Android';
+                const version = ua.match(/android (\d+\.\d+)/);
+                details = version ? `Version: ${version[1]}` : '';
+            } else if (/ipad|iphone|ipod/.test(ua)) {
+                platform = 'iOS';
+                const version = ua.match(/os (\d+_\d+)/);
+                details = version ? `Version: ${version[1].replace('_', '.')}` : '';
+            } else if (/mobile/.test(ua)) {
+                platform = 'Mobile (Other)';
+            } else {
+                platform = 'Desktop';
+            }
+            
+            let browser = 'Unknown';
+            if (/chrome/.test(ua)) browser = 'Chrome';
+            else if (/firefox/.test(ua)) browser = 'Firefox';
+            else if (/safari/.test(ua)) browser = 'Safari';
+            else if (/edge/.test(ua)) browser = 'Edge';
+            
+            document.getElementById('platform-info').innerHTML = `
+                <div class="status info">
+                    <strong>Platform:</strong> ${platform}<br>
+                    <strong>Browser:</strong> ${browser}<br>
+                    <strong>Details:</strong> ${details || 'N/A'}<br>
+                    <strong>User Agent:</strong> <code>${navigator.userAgent.slice(0, 80)}...</code>
+                </div>
+            `;
+        }
+        
+        // Test Generate Link API
+        async function testGenerateLink() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<div class="info">🔄 Testing API...</div>';
+            
+            try {
+                const response = await fetch('/api/generate-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'cek-saldo',
+                        parameters: {
+                            userId: '12345',
+                            action: 'view',
+                            source: 'api-test'
+                        },
+                        options: {
+                            analytics: true
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            <strong>✅ API Test Success!</strong><br>
+                            <strong>Generated Link:</strong> <code>${data.link}</code><br>
+                            <strong>QR Code:</strong> <code>${data.qrCode}</code><br>
+                            <strong>Created:</strong> ${data.created}
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status warning">
+                        <strong>❌ API Test Failed:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize
+        detectPlatform();
+        
+        // Console info
+        console.log('🧪 Deep Link Testing Suite');
+        console.log('Platform:', navigator.platform);
+        console.log('System ready for testing');
+        
+        // Add click tracking
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('test-link')) {
+                console.log('Test link clicked:', e.target.href);
+                console.log('Target:', e.target.textContent.trim());
+            }
+        });
+    </script>
+</body>
+</html>
