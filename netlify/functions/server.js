@@ -313,6 +313,9 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             console.log('Target type:', '${type}');
             console.log('Query string:', '${queryString}');
             console.log('Primary scheme:', '${primaryScheme}');
+            console.log('Fallback scheme:', '${fallbackScheme || 'N/A'}');
+            console.log('User Agent:', navigator.userAgent);
+            console.log('Current URL:', window.location.href);
             
             let appOpened = false;
             let attempts = 0;
@@ -331,21 +334,17 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 
                 if (${isAndroid}) {
                     if (attempts === 1) {
-                        // Android: Coba custom scheme dulu dengan multiple attempts
+                        // Android: Coba custom scheme dulu
                         console.log('Android attempt 1 - custom scheme:', '${primaryScheme}');
-                        tryOpenWithIframe('${primaryScheme}');
+                        tryOpenApp('${primaryScheme}');
                     } else if (attempts === 2) {
-                        // Android: Coba custom scheme lagi dengan method berbeda (lebih agresif)
-                        console.log('Android attempt 2 - custom scheme aggressive:', '${primaryScheme}');
-                        try {
-                            window.location.href = '${primaryScheme}';
-                        } catch (e) {
-                            console.log('Direct scheme failed:', e.message);
-                        }
+                        // Android: Coba custom scheme lagi (kadang perlu 2x)
+                        console.log('Android attempt 2 - custom scheme retry:', '${primaryScheme}');
+                        tryOpenApp('${primaryScheme}');
                     } else if (attempts === 3) {
                         // Android: Baru sekarang coba Intent URL
                         console.log('Android attempt 3 - Intent URL:', '${fallbackScheme}');
-                        window.location.href = '${fallbackScheme}';
+                        tryOpenApp('${fallbackScheme}');
                     } else {
                         // Final fallback - show error message
                         console.log('Android attempt 4 - Show error message');
@@ -356,7 +355,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     if (attempts === 1) {
                         // iOS: Custom scheme
                         console.log('iOS attempt 1 - custom scheme:', '${primaryScheme}');
-                        tryOpenWithIframe('${primaryScheme}');
+                        tryOpenApp('${primaryScheme}');
                     } else {
                         // Fallback ke App Store
                         console.log('iOS attempt 2 - App Store');
@@ -370,9 +369,9 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     return;
                 }
                 
-                // Retry setelah interval yang berbeda berdasarkan attempt
-                if (attempts < 4) { // Increase dari 3 ke 4 untuk Android
-                    const retryDelay = attempts === 1 ? 1500 : 2000; // First retry lebih cepat
+                // Retry setelah interval yang lebih cepat
+                if (attempts < 4) { // Android ada 4 attempts
+                    const retryDelay = 1000; // 1 detik untuk semua attempts (lebih cepat)
                     setTimeout(openApp, retryDelay);
                 }
             }
@@ -412,41 +411,16 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 document.getElementById('attemptInfo').style.display = 'none';
             }
             
-            function tryOpenWithIframe(scheme) {
-                console.log('Trying to open scheme:', scheme);
+            function tryOpenApp(scheme) {
+                console.log('Trying to open app with scheme:', scheme);
                 
-                // Method 1: Create hidden iframe dengan scheme (lebih aman)
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.style.width = '1px';
-                iframe.style.height = '1px';
-                iframe.src = scheme;
-                document.body.appendChild(iframe);
-                
-                // Method 2: Setelah 500ms, coba window.location jika belum berhasil
-                setTimeout(function() {
-                    if (!appOpened) {
-                        console.log('Iframe method timeout, trying direct redirect');
-                        try {
-                            // Buat link hidden dan klik
-                            const link = document.createElement('a');
-                            link.href = scheme;
-                            link.style.display = 'none';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        } catch (e) {
-                            console.log('Link click failed:', e.message);
-                        }
-                    }
-                }, 500);
-                
-                // Cleanup iframe
-                setTimeout(function() {
-                    if (iframe.parentNode) {
-                        iframe.parentNode.removeChild(iframe);
-                    }
-                }, 2000);
+                // Method: Direct window.location.href (paling simple dan reliable)
+                try {
+                    window.location.href = scheme;
+                    console.log('Direct redirect attempted to:', scheme);
+                } catch (e) {
+                    console.log('Direct scheme failed:', e.message);
+                }
             }
             
             // Event listeners untuk deteksi app opened
@@ -494,13 +468,13 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             console.log('Starting app opening process immediately...');
             openApp(); // Langsung jalankan tanpa setTimeout
             
-            // Fallback timeout - show download options (sesuaikan dengan 4 attempts)
+            // Fallback timeout - show download options (lebih cepat lagi)
             setTimeout(function() {
                 if (!appOpened) {
-                    console.log('❌ App not opened after 8 seconds, showing fallback');
+                    console.log('❌ App not opened after 5 seconds, showing fallback');
                     showFailureMessage();
                 }
-            }, 8000); // Increase ke 8000 untuk accommodate 4 attempts
+            }, 5000); // Kurangi ke 5000 untuk testing lebih cepat
             
             // Error handling
             window.addEventListener('error', function(e) {
