@@ -148,20 +148,21 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
   let primaryScheme, fallbackSchemes;
   
   if (isAndroid) {
-    // Android: Intent URL lebih reliable
-    primaryScheme = `intent://cek-saldo#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+    // Android: Intent URL dengan parameter registration
+    primaryScheme = `intent://bpu?type=registration#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
     fallbackSchemes = [
-      'bpjstku://cek-saldo',
+      'bpjstku://bpu?type=registration',
+      'bpjstku://bpu',
       'bpjstku://'
     ];
   } else {
-    // iOS: Custom scheme
-    if (type === 'product' || type === 'cek-saldo') {
-      primaryScheme = 'bpjstku://cek-saldo';
+    // iOS: Custom scheme dengan parameter registration
+    if (type === 'product' || type === 'cek-saldo' || type === 'registration') {
+      primaryScheme = 'bpjstku://bpu?type=registration'; // Ke halaman registration
     } else {
-      primaryScheme = `bpjstku://${type}`;
+      primaryScheme = `bpjstku://bpu?type=${type}`; // Dynamic parameter
     }
-    fallbackSchemes = ['bpjstku://'];
+    fallbackSchemes = ['bpjstku://bpu', 'bpjstku://'];
   }
   
   return `
@@ -230,7 +231,7 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
     <body>
         <h2>Opening BPJSTKU App...</h2>
         <div class="spinner"></div>
-        <p>Redirecting to cek-saldo page...</p>
+        <p>Redirecting to registration page...</p>
         
         <div class="fallback-buttons">
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
@@ -243,7 +244,7 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
         
         <div class="debug-info">
             Platform: ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Other'}<br>
-            Target: cek-saldo
+            Target: bpu?type=registration
         </div>
         
         <script>
@@ -264,12 +265,12 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
                 console.log('Attempt', attempts, 'to open app');
                 
                 if (${isAndroid}) {
-                    // Android: Gunakan Intent URL langsung
-                    console.log('Android detected - using Intent URL');
+                    // Android: Gunakan Intent URL langsung untuk registration
+                    console.log('Android detected - using Intent URL for registration');
                     window.location.href = '${primaryScheme}';
                 } else if (${isIOS}) {
-                    // iOS: Gunakan custom scheme
-                    console.log('iOS detected - using custom scheme:', '${primaryScheme}');
+                    // iOS: Gunakan custom scheme untuk registration
+                    console.log('iOS detected - using custom scheme for registration:', '${primaryScheme}');
                     window.location.href = '${primaryScheme}';
                 } else {
                     // Other mobile
