@@ -153,7 +153,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
   const targetUrl = `${CONFIG.ownDomain}/r/${type}${queryString}`; // URL untuk fallback browser dengan parameters
   
   // Android: Prioritas Intent URL, bukan custom scheme
-  let primaryScheme, fallbackSchemes;
+  let primaryScheme, fallbackScheme;
   
   if (isAndroid) {
     // Android: Coba custom scheme dulu, baru Intent URL
@@ -166,12 +166,6 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
       primaryScheme = `bpjstku://${type}`;
       fallbackScheme = `intent://${type}#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
     }
-    
-    fallbackSchemes = [
-      primaryScheme,
-      fallbackScheme,
-      'bpjstku://'
-    ];
   } else {
     // iOS: Custom scheme langsung
     if (queryString) {
@@ -181,8 +175,6 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
       // Jika tidak ada query parameters, gunakan type dari path saja
       primaryScheme = `bpjstku://${type}`;
     }
-    
-    fallbackSchemes = ['bpjstku://'];
   }
   
   return `
@@ -344,8 +336,8 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                         tryOpenWithIframe('${primaryScheme}');
                     } else if (attempts === 2) {
                         // Fallback ke Intent URL
-                        console.log('Android attempt 2 - Intent URL:', '${typeof fallbackScheme !== 'undefined' ? fallbackScheme : 'undefined'}');
-                        ${typeof fallbackScheme !== 'undefined' ? `window.location.href = '${fallbackScheme}';` : `window.location.href = '${CONFIG.playStoreUrl}';`}
+                        console.log('Android attempt 2 - Intent URL:', '${fallbackScheme}');
+                        window.location.href = '${fallbackScheme}';
                     } else {
                         // Final fallback ke Play Store
                         console.log('Android attempt 3 - Play Store');
@@ -370,9 +362,9 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                     return;
                 }
                 
-                // Retry setelah 3 detik jika belum berhasil
+                // Retry setelah 2 detik jika belum berhasil (lebih cepat)
                 if (attempts < 3) {
-                    setTimeout(openApp, 3000);
+                    setTimeout(openApp, 2000); // Kurangi dari 3000 ke 2000
                 }
             }
             
@@ -410,30 +402,25 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             }
             
             function tryOpenWithIframe(scheme) {
-                // Method 1: Iframe (silent)
+                // Method 1: Direct window.location (paling agresif untuk mobile)
+                try {
+                    window.location.href = scheme;
+                } catch (e) {
+                    console.log('Direct scheme failed:', e.message);
+                }
+                
+                // Method 2: Iframe sebagai backup (untuk beberapa browser)
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
                 iframe.src = scheme;
                 document.body.appendChild(iframe);
-                
-                // Method 2: Window location setelah delay singkat
-                setTimeout(function() {
-                    if (!appOpened) {
-                        console.log('Iframe timeout, trying window.location');
-                        try {
-                            window.location.href = scheme;
-                        } catch (e) {
-                            console.log('Custom scheme failed:', e.message);
-                        }
-                    }
-                }, 500);
                 
                 // Cleanup iframe
                 setTimeout(function() {
                     if (iframe.parentNode) {
                         iframe.parentNode.removeChild(iframe);
                     }
-                }, 2000);
+                }, 1000); // Kurangi cleanup time
             }
             
             // Event listeners untuk deteksi app opened
@@ -452,14 +439,14 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             
             // Method 1: Visibility change (paling reliable)
             document.addEventListener('visibilitychange', function() {
-                if (document.hidden && Date.now() - startTime > 500) {
+                if (document.hidden && Date.now() - startTime > 200) { // Kurangi dari 500 ke 200
                     markAppOpened('visibility change');
                 }
             });
             
             // Method 2: Window blur  
             window.addEventListener('blur', function() {
-                if (Date.now() - startTime > 1000) {
+                if (Date.now() - startTime > 500) { // Kurangi dari 1000 ke 500
                     markAppOpened('window blur');
                 }
             });
@@ -469,19 +456,17 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 markAppOpened('page hide');
             });
             
-            // Start app opening process
-            console.log('Starting app opening process in 1 second...');
+            // Start app opening process LANGSUNG (tanpa delay)
+            console.log('Starting app opening process immediately...');
+            openApp(); // Langsung jalankan tanpa setTimeout
+            
+            // Fallback timeout - show download options (lebih cepat)
             setTimeout(function() {
-                openApp();
-                
-                // Fallback timeout - show download options (increase timeout)
-                setTimeout(function() {
-                    if (!appOpened && attempts === 0) {
-                        console.log('❌ App not opened after 10 seconds, showing fallback');
-                        showFailureMessage();
-                    }
-                }, 10000); // Increased from 5000 to 10000
-            }, 1000);
+                if (!appOpened) {
+                    console.log('❌ App not opened after 6 seconds, showing fallback');
+                    showFailureMessage();
+                }
+            }, 6000); // Kurangi dari 10000 ke 6000
             
             // Error handling
             window.addEventListener('error', function(e) {
