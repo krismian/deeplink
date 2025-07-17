@@ -123,11 +123,14 @@ function generateSmartRedirectPage(type, queryParams) {
                 <a href="https://apps.apple.com/app/id${CONFIG.iosAppId}" class="btn" onclick="updateStatus('Redirecting to App Store...')">
                     🍎 Download BPJSTKU for iOS
                 </a>
+                <button onclick="simpleAppLaunch()" class="btn" style="background: rgba(0,255,0,0.2); border-color: rgba(0,255,0,0.3);">
+                    📱 Simple App Launch
+                </button>
                 <button onclick="manualRetry()" class="btn" style="background: rgba(255,165,0,0.2); border-color: rgba(255,165,0,0.3);">
                     🔄 Try Again
                 </button>
-                <button onclick="directAppAttempt()" class="btn" style="background: rgba(0,255,0,0.2); border-color: rgba(0,255,0,0.3);">
-                    🚀 Force App Launch
+                <button onclick="directAppAttempt()" class="btn" style="background: rgba(0,100,255,0.2); border-color: rgba(0,100,255,0.3);">
+                    🚀 Force Deep Link
                 </button>
             </div>
         </div>
@@ -136,7 +139,17 @@ function generateSmartRedirectPage(type, queryParams) {
             const strategies = {
                 android: [
                     {
-                        name: 'Direct Custom Scheme',
+                        name: 'Simple App Launch',
+                        url: 'intent://launch#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end',
+                        timeout: 1500
+                    },
+                    {
+                        name: 'Basic Custom Scheme',
+                        url: '${CONFIG.customScheme}://',
+                        timeout: 1000
+                    },
+                    {
+                        name: 'Specific Deep Link',
                         url: '${customUrl}',
                         timeout: 1500
                     },
@@ -158,7 +171,12 @@ function generateSmartRedirectPage(type, queryParams) {
                 ],
                 ios: [
                     {
-                        name: 'iOS Custom Scheme',
+                        name: 'Simple iOS Launch',
+                        url: '${CONFIG.customScheme}://',
+                        timeout: 1000
+                    },
+                    {
+                        name: 'iOS Specific Deep Link',
                         url: '${customUrl}',
                         timeout: 1500
                     },
@@ -234,77 +252,92 @@ function generateSmartRedirectPage(type, queryParams) {
 
             function immediateAppAttempt() {
                 const platform = detectUserAgent();
+                // Try simple app launch first (no deep link to specific feature)
+                const simpleScheme = '${CONFIG.customScheme}://';
                 const customScheme = '${customUrl}';
                 
                 updateStatus('Platform detected: ' + platform);
                 console.log('Starting immediate app attempt for platform:', platform);
                 
-                // For Android devices, try multiple methods aggressively
+                // For Android devices, try simple app launch first
                 if (platform === 'android') {
-                    updateStatus('🤖 Android detected - Launching BPJSTKU app...');
+                    updateStatus('🤖 Android detected - Opening BPJSTKU app (main screen)...');
                     
-                    // Method 1: Android Intent URL (most reliable for Android)
-                    const intentUrl = 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end';
+                    // Method 1: Simple app launch (just open the app, no specific page)
+                    const simpleIntentUrl = 'intent://launch#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end';
                     
-                    console.log('Trying Android Intent URL:', intentUrl);
+                    console.log('Trying simple app launch Intent URL:', simpleIntentUrl);
                     
                     try {
-                        window.location.href = intentUrl;
+                        window.location.href = simpleIntentUrl;
                     } catch (e) {
-                        console.log('Intent URL failed:', e);
+                        console.log('Simple Intent URL failed:', e);
                     }
                     
-                    // Method 2: Direct custom scheme (fallback)
+                    // Method 2: Basic custom scheme (just open app)
                     setTimeout(() => {
-                        console.log('Trying custom scheme as fallback:', customScheme);
+                        console.log('Trying basic custom scheme:', simpleScheme);
+                        try {
+                            window.location.href = simpleScheme;
+                        } catch (e) {
+                            console.log('Basic custom scheme failed:', e);
+                        }
+                    }, 800);
+                    
+                    // Method 3: Package-based Intent (Android specific)
+                    setTimeout(() => {
+                        const packageIntent = 'intent://package/${CONFIG.androidPackage}#Intent;scheme=package;package=${CONFIG.androidPackage};end';
+                        console.log('Trying package intent:', packageIntent);
+                        try {
+                            window.location.href = packageIntent;
+                        } catch (e) {
+                            console.log('Package intent failed:', e);
+                        }
+                    }, 1200);
+                    
+                    // Method 4: If app opens successfully, then try specific deep link
+                    setTimeout(() => {
+                        console.log('Now trying specific deep link:', customScheme);
                         try {
                             window.location.href = customScheme;
                         } catch (e) {
-                            console.log('Custom scheme failed:', e);
+                            console.log('Specific deep link failed:', e);
                         }
-                    }, 500);
-                    
-                    // Method 3: Hidden iframe (additional attempt)
-                    setTimeout(() => {
-                        console.log('Trying hidden iframe method');
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.style.width = '1px';
-                        iframe.style.height = '1px';
-                        iframe.src = customScheme;
-                        document.body.appendChild(iframe);
-                        
-                        // Remove iframe after attempt
-                        setTimeout(() => {
-                            if (iframe.parentNode) {
-                                iframe.parentNode.removeChild(iframe);
-                            }
-                        }, 2000);
-                    }, 1000);
+                    }, 2000);
                     
                 } else if (platform === 'ios') {
-                    updateStatus('🍎 iOS detected - Launching BPJSTKU app...');
+                    updateStatus('🍎 iOS detected - Opening BPJSTKU app...');
                     
-                    // For iOS, try custom scheme first
-                    console.log('Trying iOS custom scheme:', customScheme);
+                    // For iOS, try simple scheme first
+                    console.log('Trying iOS simple scheme:', simpleScheme);
                     try {
-                        window.location.href = customScheme;
+                        window.location.href = simpleScheme;
                     } catch (e) {
-                        console.log('iOS custom scheme failed:', e);
+                        console.log('iOS simple scheme failed:', e);
                     }
+                    
+                    // Then try specific deep link
+                    setTimeout(() => {
+                        console.log('Trying iOS specific deep link:', customScheme);
+                        try {
+                            window.location.href = customScheme;
+                        } catch (e) {
+                            console.log('iOS specific deep link failed:', e);
+                        }
+                    }, 1000);
                     
                 } else {
                     updateStatus('💻 Desktop detected - Trying protocol handler...');
                     
                     try {
-                        window.location.href = customScheme;
+                        window.location.href = simpleScheme;
                     } catch (e) {
                         console.log('Protocol handler failed:', e);
                     }
                 }
                 
                 // Start the full fallback process after delay
-                setTimeout(attemptAppOpen, 2000);
+                setTimeout(attemptAppOpen, 3000);
             }
 
             async function attemptAppOpen() {
@@ -367,38 +400,104 @@ function generateSmartRedirectPage(type, queryParams) {
                 updateProgress(100);
             }
 
-            function directAppAttempt() {
-                updateStatus('🚀 Force launching app...');
+            function simpleAppLaunch() {
+                updateStatus('📱 Trying simple app launch...');
                 const platform = detectUserAgent();
+                const simpleScheme = '${CONFIG.customScheme}://';
+                
+                console.log('Simple app launch for platform:', platform);
+                
+                if (platform === 'android') {
+                    // Very simple methods to just open the app
+                    const simpleMethods = [
+                        // Just open the app, no specific page
+                        'intent://launch#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end',
+                        // Basic scheme
+                        simpleScheme,
+                        // Alternative simple intent
+                        'intent://#Intent;package=${CONFIG.androidPackage};end'
+                    ];
+                    
+                    simpleMethods.forEach((method, index) => {
+                        setTimeout(() => {
+                            console.log('Trying simple launch method', index + 1, ':', method);
+                            updateStatus('Trying method ' + (index + 1) + ': Simple launch...');
+                            try {
+                                window.location.href = method;
+                            } catch (e) {
+                                console.log('Simple launch method', index + 1, 'failed:', e);
+                            }
+                        }, index * 800);
+                    });
+                } else {
+                    // For other platforms
+                    try {
+                        window.location.href = simpleScheme;
+                    } catch (e) {
+                        console.log('Simple launch failed:', e);
+                    }
+                }
+            }
+
+            function directAppAttempt() {
+                updateStatus('🚀 Force launching app (simple launch)...');
+                const platform = detectUserAgent();
+                const simpleScheme = '${CONFIG.customScheme}://';
                 const customScheme = '${customUrl}';
                 
                 console.log('Direct app attempt for platform:', platform);
                 
                 if (platform === 'android') {
-                    // Try all Android methods simultaneously
+                    // Try simple app launch methods for Android
                     const methods = [
-                        'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end',
-                        customScheme,
+                        // Method 1: Simple Intent to just open the app
+                        'intent://launch#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end',
+                        // Method 2: Basic custom scheme
+                        simpleScheme,
+                        // Method 3: Android package launch
+                        'intent://package/${CONFIG.androidPackage}#Intent;scheme=package;package=${CONFIG.androidPackage};end',
+                        // Method 4: Market protocol
                         'market://details?id=${CONFIG.androidPackage}'
                     ];
                     
+                    console.log('Trying simple launch methods for Android...');
                     methods.forEach((method, index) => {
                         setTimeout(() => {
-                            console.log('Trying method', index + 1, ':', method);
+                            console.log('Trying simple method', index + 1, ':', method);
                             try {
                                 window.location.href = method;
                             } catch (e) {
-                                console.log('Method', index + 1, 'failed:', e);
+                                console.log('Simple method', index + 1, 'failed:', e);
                             }
-                        }, index * 200);
+                        }, index * 400);
                     });
+                    
+                    // After trying simple launch, try specific deep link if app is now open
+                    setTimeout(() => {
+                        console.log('Now trying specific deep link after app should be open:', customScheme);
+                        try {
+                            window.location.href = customScheme;
+                        } catch (e) {
+                            console.log('Specific deep link after simple launch failed:', e);
+                        }
+                    }, 2000);
+                    
                 } else {
-                    // For other platforms, try custom scheme
+                    // For other platforms, try simple scheme first
                     try {
-                        window.location.href = customScheme;
+                        window.location.href = simpleScheme;
                     } catch (e) {
-                        console.log('Direct app attempt failed:', e);
+                        console.log('Simple scheme failed:', e);
                     }
+                    
+                    // Then specific deep link
+                    setTimeout(() => {
+                        try {
+                            window.location.href = customScheme;
+                        } catch (e) {
+                            console.log('Specific deep link failed:', e);
+                        }
+                    }, 1000);
                 }
             }
 
