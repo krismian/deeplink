@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Dynamic Link Tester</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border-left: 4px solid #FFD700;
+        }
+        .section h3 {
+            color: #FFD700;
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        .url-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            margin: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .url-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .url-button.primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        .url-button.success {
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+        }
+        .url-button.info {
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+        }
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .firebase-icon {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        .step-number {
+            background: #FFD700;
+            color: #333;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Firebase Dynamic Link Tester</h1>
+        
+        <div class="section">
+            <h3><span class="firebase-icon">🔥</span>Production Test URLs</h3>
+            <p>Klik URL di bawah ini untuk test Firebase Dynamic Link generation:</p>
+            
+            <div>
+                <a href="https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo" class="url-button primary" target="_blank">
+                    📱 Test Cek Saldo
+                </a>
+                
+                <a href="https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo?userId=12345&action=view" class="url-button success" target="_blank">
+                    📱 Test Cek Saldo + Params
+                </a>
+                
+                <a href="https://elegant-kleicha-42b5e8.netlify.app/r/bayar-iuran?amount=50000&method=bca" class="url-button info" target="_blank">
+                    📱 Test Bayar Iuran + Params
+                </a>
+            </div>
+            
+            <div class="url-display">
+                Original URL: https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo?userId=12345&action=view<br>
+                Firebase URL: https://individual-engagement-3.web.app/?link=https%3A//elegant-kleicha-42b5e8.netlify.app/app/cek-saldo%3FuserId%3D12345%26action%3Dview&apn=com.bpjstku<br>
+                App receives: https://elegant-kleicha-42b5e8.netlify.app/app/cek-saldo?userId=12345&action=view
+            </div>
+        </div>
+
+        <div class="section">
+            <h3><span class="firebase-icon">⚡</span>Direct App URLs (for browser testing)</h3>
+            <p>URL yang akan diterima oleh aplikasi Android:</p>
+            
+            <div>
+                <a href="https://elegant-kleicha-42b5e8.netlify.app/app/cek-saldo" class="url-button" target="_blank">
+                    🌐 Direct App URL - Cek Saldo
+                </a>
+                
+                <a href="https://elegant-kleicha-42b5e8.netlify.app/app/cek-saldo?userId=12345&action=view" class="url-button" target="_blank">
+                    🌐 Direct App URL + Params
+                </a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3><span class="firebase-icon">🧪</span>API Test</h3>
+            <button onclick="testFirebaseGeneration()" class="url-button success">
+                🔥 Test Firebase Dynamic Link Generation
+            </button>
+            
+            <div id="testResult" class="test-result" style="display: none;">
+                <h4>Test Result:</h4>
+                <div id="testOutput"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3><span class="firebase-icon">📋</span>How to Test</h3>
+            <p><span class="step-number">1</span>Klik URL "Test Cek Saldo" di atas</p>
+            <p><span class="step-number">2</span>Server akan generate Firebase Dynamic Link</p>
+            <p><span class="step-number">3</span>Firebase akan redirect ke app atau Play Store</p>
+            <p><span class="step-number">4</span>App akan receive URL dengan format <code>/app/{type}</code></p>
+            <p><span class="step-number">5</span>App parse URL dan navigate ke screen yang sesuai</p>
+        </div>
+
+        <div class="status success">
+            <strong>✅ System Status:</strong> Firebase Dynamic Link generation ACTIVE<br>
+            <strong>🔧 Strategy:</strong> Auto-generate Firebase Dynamic Links for full Firebase SDK compatibility<br>
+            <strong>📱 App Support:</strong> Compatible with existing Firebase SDK implementation
+        </div>
+    </div>
+
+    <script>
+        async function testFirebaseGeneration() {
+            const resultDiv = document.getElementById('testResult');
+            const outputDiv = document.getElementById('testOutput');
+            
+            resultDiv.style.display = 'block';
+            outputDiv.innerHTML = '<p>🔄 Testing Firebase Dynamic Link generation...</p>';
+            
+            try {
+                // Test the API endpoint
+                const testUrl = 'https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo?userId=test123&action=view';
+                const response = await fetch(testUrl, {
+                    method: 'GET',
+                    redirect: 'manual' // Don't follow redirects automatically
+                });
+                
+                if (response.status === 302) {
+                    const location = response.headers.get('Location');
+                    outputDiv.innerHTML = `
+                        <div class="status success">
+                            <strong>✅ SUCCESS!</strong> Firebase Dynamic Link generated successfully
+                        </div>
+                        <h4>Generated Firebase URL:</h4>
+                        <div class="url-display">${location || 'Location header not accessible via CORS'}</div>
+                        <h4>Expected Pattern:</h4>
+                        <div class="url-display">https://individual-engagement-3.web.app/?link=...&apn=com.bpjstku</div>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Test URL:</strong> ${testUrl}</p>
+                    `;
+                } else {
+                    throw new Error(`Unexpected status: ${response.status}`);
+                }
+            } catch (error) {
+                outputDiv.innerHTML = `
+                    <div class="status error">
+                        <strong>❌ ERROR:</strong> ${error.message}
+                    </div>
+                    <p>This might be due to CORS restrictions. The actual link generation should work when accessed directly.</p>
+                `;
+            }
+        }
+        
+        // Show current configuration
+        console.log('🔥 Firebase Dynamic Link Configuration:');
+        console.log('Domain:', 'https://individual-engagement-3.web.app');
+        console.log('Android Package:', 'com.bpjstku');
+        console.log('Server:', 'https://elegant-kleicha-42b5e8.netlify.app');
+    </script>
+</body>
+</html>
