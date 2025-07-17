@@ -39,8 +39,8 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 });
 
 // Main redirect endpoint
-app.get('/r/:type/:id', (req, res) => {
-  const { type, id } = req.params;
+app.get('/r/:type', (req, res) => {
+  const { type } = req.params;
   const userAgent = req.get('User-Agent') || '';
   const referer = req.get('Referer') || '';
   
@@ -52,24 +52,24 @@ app.get('/r/:type/:id', (req, res) => {
   
   // Log untuk analytics
   console.log('Redirect request:', {
-    type, id, userAgent: userAgent.slice(0, 100), referer, isMobile, isBot
+    type, userAgent: userAgent.slice(0, 100), referer, isMobile, isBot
   });
   
   if (isBot) {
-    return res.send(generateBotResponse(type, id));
+    return res.send(generateBotResponse(type));
   }
   
   if (isMobile) {
-    return res.send(generateMobileRedirect(type, id, isIOS, isAndroid));
+    return res.send(generateMobileRedirect(type, isIOS, isAndroid));
   } else {
-    return res.send(generateDesktopResponse(type, id));
+    return res.send(generateDesktopResponse(type));
   }
 });
 
 // Generate Firebase dynamic link on-demand
-app.get('/firebase-link/:type/:id', (req, res) => {
-  const { type, id } = req.params;
-  const targetUrl = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
+app.get('/firebase-link/:type', (req, res) => {
+  const { type } = req.params;
+  const targetUrl = `${CONFIG.ownDomain}/r/${type}`;
   
   const firebaseLink = `${CONFIG.firebaseDomain}/?` + 
     `link=${encodeURIComponent(targetUrl)}` +
@@ -82,17 +82,17 @@ app.get('/firebase-link/:type/:id', (req, res) => {
 
 // API endpoint untuk generate link dari app
 app.post('/generate-link', (req, res) => {
-  const { type, id, useFirebase = false, metadata = {} } = req.body;
+  const { type, useFirebase = false, metadata = {} } = req.body;
   
   let link;
   if (useFirebase) {
-    const targetUrl = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
+    const targetUrl = `${CONFIG.ownDomain}/r/${type}`;
     link = `${CONFIG.firebaseDomain}/?` + 
       `link=${encodeURIComponent(targetUrl)}` +
       `&apn=${CONFIG.androidPackage}` +
       `&ibi=${CONFIG.iosBundleId}`;
   } else {
-    link = `${CONFIG.ownDomain}/r/${type}/${id}`;
+    link = `${CONFIG.ownDomain}/r/${type}`;
   }
   
   res.json({ 
@@ -102,10 +102,10 @@ app.post('/generate-link', (req, res) => {
   });
 });
 
-function generateMobileRedirect(type, id, isIOS, isAndroid) {
-  const targetUrl = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
-  const customScheme = `myapp://${type}/${id}`;
-  const androidAppLink = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
+function generateMobileRedirect(type, isIOS, isAndroid) {
+  const targetUrl = `${CONFIG.ownDomain}/r/${type}`; // URL untuk fallback browser
+  const customScheme = `myapp://${type}`; // Custom scheme aplikasi
+  const androidAppLink = `${CONFIG.ownDomain}/r/${type}`;
   
   return `
     <!DOCTYPE html>
@@ -113,7 +113,6 @@ function generateMobileRedirect(type, id, isIOS, isAndroid) {
     <head>
         <title>Opening App...</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        ${isAndroid ? `<meta http-equiv="refresh" content="0; url=${androidAppLink}">` : ''}
         <style>
             body { 
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -142,6 +141,11 @@ function generateMobileRedirect(type, id, isIOS, isAndroid) {
             }
             .fallback-buttons {
                 margin-top: 30px;
+                opacity: 0;
+                animation: fadeIn 1s ease-in 3s forwards;
+            }
+            @keyframes fadeIn {
+                to { opacity: 1; }
             }
             .btn {
                 display: inline-block;
@@ -169,64 +173,87 @@ function generateMobileRedirect(type, id, isIOS, isAndroid) {
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
                 Download App
             </a>
-            <a href="${targetUrl}" class="btn">
+            <a href="https://elegant-kleicha-42b5e8.netlify.app/" class="btn">
                 Continue in Browser
             </a>
         </div>
         
         <script>
+            console.log('Platform detection - Android: ${isAndroid}, iOS: ${isIOS}');
+            
             let attempts = 0;
-            const maxAttempts = 4;
+            const maxAttempts = 2;
+            let appOpened = false;
             
             function tryOpenApp() {
+                if (appOpened) return;
+                
                 attempts++;
                 console.log('Attempt', attempts, 'to open app');
                 
                 if (${isAndroid}) {
                     if (attempts === 1) {
-                        // Android App Link (verified domain)
-                        window.location = '${androidAppLink}';
-                    } else if (attempts === 2) {
-                        // Custom scheme fallback
+                        // Android: Coba custom scheme dulu
+                        console.log('Trying custom scheme: ${customScheme}');
                         window.location = '${customScheme}';
-                    } else if (attempts === 3) {
-                        // Firebase dynamic link
-                        const firebaseLink = '${CONFIG.firebaseDomain}/?link=${encodeURIComponent(targetUrl)}&apn=${CONFIG.androidPackage}';
-                        window.location = firebaseLink;
                     } else {
-                        // Play Store
+                        // Fallback ke Play Store
+                        console.log('Redirecting to Play Store');
                         window.location = '${CONFIG.playStoreUrl}';
                     }
                 } else if (${isIOS}) {
                     if (attempts === 1) {
+                        // iOS: Coba custom scheme dulu
+                        console.log('Trying custom scheme: ${customScheme}');
                         window.location = '${customScheme}';
-                    } else if (attempts === 2) {
-                        const firebaseLink = '${CONFIG.firebaseDomain}/?link=${encodeURIComponent(targetUrl)}&ibi=${CONFIG.iosBundleId}';
-                        window.location = firebaseLink;
                     } else {
+                        // Fallback ke App Store
+                        console.log('Redirecting to App Store');
                         window.location = '${CONFIG.appStoreUrl}';
                     }
                 }
                 
+                // Retry jika belum berhasil
                 if (attempts < maxAttempts) {
-                    setTimeout(tryOpenApp, 1500);
+                    setTimeout(tryOpenApp, 2500);
                 }
             }
             
-            setTimeout(tryOpenApp, 500);
+            // Deteksi jika app berhasil dibuka
+            let startTime = Date.now();
             
             document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
+                    appOpened = true;
                     console.log('App likely opened successfully');
                 }
             });
+            
+            window.addEventListener('blur', function() {
+                if (Date.now() - startTime > 1000) {
+                    appOpened = true;
+                    console.log('App opened - window lost focus');
+                }
+            });
+            
+            // Mulai proses buka app
+            setTimeout(tryOpenApp, 500);
+            
+            // Safety fallback - jika tidak ada yang terjadi dalam 8 detik
+            setTimeout(function() {
+                if (!appOpened && attempts === 0) {
+                    console.log('Timeout - showing fallback options');
+                    document.querySelector('.fallback-buttons').style.opacity = '1';
+                    document.querySelector('.fallback-buttons').style.animation = 'none';
+                }
+            }, 8000);
         </script>
     </body>
     </html>
   `;
 }
 
-function generateDesktopResponse(type, id) {
+function generateDesktopResponse(type) {
   return `
     <!DOCTYPE html>
     <html>
@@ -257,7 +284,7 @@ function generateDesktopResponse(type, id) {
     <body>
         <div class="hero">
             <h1>Best Experience on Mobile</h1>
-            <p>Download our app for the best experience viewing ${type} ${id}</p>
+            <p>Download our app for the best experience viewing ${type}</p>
         </div>
         
         <div class="app-badges">
@@ -273,20 +300,20 @@ function generateDesktopResponse(type, id) {
   `;
 }
 
-function generateBotResponse(type, id) {
+function generateBotResponse(type) {
   return `
     <!DOCTYPE html>
     <html>
     <head>
-        <title>${type.charAt(0).toUpperCase() + type.slice(1)} ${id}</title>
-        <meta property="og:title" content="${type.charAt(0).toUpperCase() + type.slice(1)} ${id}">
+        <title>${type.charAt(0).toUpperCase() + type.slice(1)}</title>
+        <meta property="og:title" content="${type.charAt(0).toUpperCase() + type.slice(1)}">
         <meta property="og:description" content="Check this out on our app!">
         <meta property="og:image" content="${CONFIG.ownDomain}/images/og-image.jpg">
-        <meta property="og:url" content="${CONFIG.ownDomain}/${type}/${id}">
+        <meta property="og:url" content="${CONFIG.ownDomain}/${type}">
         <meta name="twitter:card" content="summary_large_image">
     </head>
     <body>
-        <h1>${type.charAt(0).toUpperCase() + type.slice(1)} ${id}</h1>
+        <h1>${type.charAt(0).toUpperCase() + type.slice(1)}</h1>
         <p>View this content in our mobile app for the best experience.</p>
     </body>
     </html>
