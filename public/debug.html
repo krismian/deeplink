@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deep Link Debug - BPJSTKU</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        .test-link {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 10px 10px 0;
+            transition: background 0.3s;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .mobile-test {
+            background: #28a745;
+        }
+        .mobile-test:hover {
+            background: #1e7e34;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Deep Link Debug Center</h1>
+        
+        <div class="debug-info">
+            <h3>Current Environment Info:</h3>
+            <pre id="env-info">Loading...</pre>
+        </div>
+
+        <div class="debug-info">
+            <h3>Platform Detection Test:</h3>
+            <pre id="platform-info">Loading...</pre>
+        </div>
+
+        <h3>Test Links:</h3>
+        <div>
+            <a href="/r/cek-saldo?feature=jht&source=firebase" class="test-link">
+                🔗 Cek Saldo (Firebase Migration)
+            </a>
+            <a href="/r/cek-saldo" class="test-link">
+                🔗 Cek Saldo (Direct)
+            </a>
+            <a href="/r/bantuan" class="test-link">
+                🔗 Bantuan
+            </a>
+            <a href="/r/profil" class="test-link">
+                🔗 Profil
+            </a>
+        </div>
+
+        <h3>Force Mobile Tests:</h3>
+        <div>
+            <button onclick="testMobile('android')" class="test-link mobile-test">
+                📱 Test as Android
+            </button>
+            <button onclick="testMobile('ios')" class="test-link mobile-test">
+                🍎 Test as iOS
+            </button>
+        </div>
+
+        <div class="debug-info">
+            <h3>API Test Results:</h3>
+            <pre id="api-results">No tests run yet</pre>
+        </div>
+
+        <h3>QR Code Tests:</h3>
+        <div>
+            <img id="qr-cek-saldo" style="max-width: 200px; margin: 10px;" />
+            <p>Scan with mobile device to test actual deep linking</p>
+        </div>
+    </div>
+
+    <script>
+        // Display environment info
+        document.getElementById('env-info').textContent = JSON.stringify({
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            cookieEnabled: navigator.cookieEnabled,
+            onLine: navigator.onLine,
+            screen: {
+                width: screen.width,
+                height: screen.height
+            },
+            window: {
+                width: window.innerWidth,
+                height: window.innerHeight
+            }
+        }, null, 2);
+
+        // Platform detection
+        function detectPlatform() {
+            const ua = navigator.userAgent.toLowerCase();
+            
+            if (/android/i.test(ua)) return 'android';
+            if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+            if (/mobile/i.test(ua) && !/tablet/i.test(ua)) return 'mobile-unknown';
+            if (/windows nt/i.test(ua)) return 'windows';
+            if (/macintosh|mac os x/i.test(ua)) return 'mac';
+            if (/linux/i.test(ua)) return 'linux';
+            
+            return 'unknown';
+        }
+
+        document.getElementById('platform-info').textContent = JSON.stringify({
+            detected: detectPlatform(),
+            isMobile: /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+            isTablet: /Tablet|iPad/i.test(navigator.userAgent),
+            tests: {
+                hasAndroid: /android/i.test(navigator.userAgent),
+                hasIPhone: /iphone/i.test(navigator.userAgent),
+                hasMobile: /mobile/i.test(navigator.userAgent)
+            }
+        }, null, 2);
+
+        // Test mobile
+        async function testMobile(platform) {
+            try {
+                const response = await fetch('/api/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': platform === 'android' 
+                            ? 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 Mobile'
+                            : 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 Mobile'
+                    },
+                    body: JSON.stringify({
+                        type: 'cek-saldo',
+                        feature: 'jht',
+                        source: 'debug-' + platform
+                    })
+                });
+                
+                const result = await response.json();
+                document.getElementById('api-results').textContent = JSON.stringify(result, null, 2);
+                
+                if (result.shortUrl) {
+                    window.open(result.shortUrl, '_blank');
+                }
+            } catch (error) {
+                document.getElementById('api-results').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Generate QR code for testing
+        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + 
+                      encodeURIComponent(window.location.origin + '/r/cek-saldo?feature=jht&source=qr-test');
+        document.getElementById('qr-cek-saldo').src = qrUrl;
+
+        // Auto-refresh platform info every 5 seconds
+        setInterval(() => {
+            document.getElementById('platform-info').textContent = JSON.stringify({
+                detected: detectPlatform(),
+                isMobile: /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+                timestamp: new Date().toISOString()
+            }, null, 2);
+        }, 5000);
+    </script>
+</body>
+</html>

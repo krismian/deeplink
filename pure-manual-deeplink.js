@@ -117,12 +117,15 @@ function generateSmartRedirectPage(type, queryParams) {
                 <div class="progress-bar" id="progress"></div>
             </div>
             <div class="buttons">
-                <a href="https://play.google.com/store/apps/details?id=${CONFIG.androidPackage}" class="btn">
-                    📥 Android App
+                <a href="https://play.google.com/store/apps/details?id=${CONFIG.androidPackage}" class="btn" onclick="updateStatus('Redirecting to Play Store...')">
+                    📥 Download BPJSTKU for Android
                 </a>
-                <a href="https://apps.apple.com/app/id${CONFIG.iosAppId}" class="btn">
-                    🍎 iOS App
+                <a href="https://apps.apple.com/app/id${CONFIG.iosAppId}" class="btn" onclick="updateStatus('Redirecting to App Store...')">
+                    🍎 Download BPJSTKU for iOS
                 </a>
+                <button onclick="manualRetry()" class="btn" style="background: rgba(255,165,0,0.2); border-color: rgba(255,165,0,0.3);">
+                    🔄 Try Again
+                </button>
             </div>
         </div>
 
@@ -130,31 +133,31 @@ function generateSmartRedirectPage(type, queryParams) {
             const strategies = {
                 android: [
                     {
-                        name: 'Custom Scheme',
+                        name: 'Direct Custom Scheme',
                         url: '${customUrl}',
-                        timeout: 2500
+                        timeout: 1500
                     },
                     {
-                        name: 'Intent URL',
-                        url: 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end',
+                        name: 'Android Intent URL',
+                        url: 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end',
                         timeout: 2000
                     },
                     {
-                        name: 'Market Intent',
+                        name: 'Market Protocol',
                         url: 'market://details?id=${CONFIG.androidPackage}',
                         timeout: 1500
                     },
                     {
-                        name: 'Play Store',
+                        name: 'Play Store Direct',
                         url: 'https://play.google.com/store/apps/details?id=${CONFIG.androidPackage}',
                         timeout: 0
                     }
                 ],
                 ios: [
                     {
-                        name: 'Custom Scheme',
+                        name: 'iOS Custom Scheme',
                         url: '${customUrl}',
-                        timeout: 2500
+                        timeout: 1500
                     },
                     {
                         name: 'Universal Link',
@@ -187,39 +190,101 @@ function generateSmartRedirectPage(type, queryParams) {
             function detectUserAgent() {
                 const ua = navigator.userAgent.toLowerCase();
                 
-                // More aggressive mobile detection
-                if (/android/i.test(ua)) return 'android';
-                if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
-                if (/mobile/i.test(ua) && !/tablet/i.test(ua)) {
-                    // Default mobile to android if platform unclear
+                // Debug logging
+                console.log('User Agent:', navigator.userAgent);
+                console.log('Platform:', navigator.platform);
+                console.log('Language:', navigator.language);
+                
+                // Very aggressive Android detection
+                if (/android/i.test(ua)) {
+                    console.log('Detected: Android via UA');
                     return 'android';
                 }
                 
+                // Check for mobile indicators that suggest Android
+                if (/mobile/i.test(ua) || /phone/i.test(ua)) {
+                    console.log('Detected: Mobile device, defaulting to Android');
+                    return 'android';
+                }
+                
+                // iOS detection
+                if (/iphone|ipad|ipod/i.test(ua)) {
+                    console.log('Detected: iOS');
+                    return 'ios';
+                }
+                
+                // If touch capability exists on mobile viewport, assume Android
+                if ('ontouchstart' in window && window.innerWidth < 1024) {
+                    console.log('Detected: Touch mobile device, defaulting to Android');
+                    return 'android';
+                }
+                
+                // Last resort: check screen size for mobile
+                if (window.screen.width <= 768 || window.innerWidth <= 768) {
+                    console.log('Detected: Small screen, defaulting to Android');
+                    return 'android';
+                }
+                
+                console.log('Detected: Desktop/Unknown');
                 return 'desktop';
             }
 
             function immediateAppAttempt() {
-                // Try to open app immediately without delay
                 const platform = detectUserAgent();
                 const customScheme = '${customUrl}';
                 
-                updateStatus('Trying to open app...');
+                updateStatus('Detecting platform: ' + platform);
                 
-                // Create invisible iframe for app opening
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = customScheme;
-                document.body.appendChild(iframe);
-                
-                // Also try direct window location
-                try {
-                    window.location.href = customScheme;
-                } catch (e) {
-                    console.log('Direct location failed, trying alternatives...');
+                // For Android devices, try multiple methods immediately
+                if (platform === 'android') {
+                    updateStatus('Android detected - trying to open BPJSTKU app...');
+                    
+                    // Method 1: Direct custom scheme
+                    try {
+                        window.location.href = customScheme;
+                    } catch (e) {
+                        console.log('Custom scheme failed:', e);
+                    }
+                    
+                    // Method 2: Android Intent URL (after short delay)
+                    setTimeout(() => {
+                        try {
+                            const intentUrl = 'intent://${type}${queryParams ? '?' + new URLSearchParams(queryParams).toString() : ''}#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${CONFIG.androidPackage};end';
+                            window.location.href = intentUrl;
+                        } catch (e) {
+                            console.log('Intent URL failed:', e);
+                        }
+                    }, 300);
+                    
+                    // Method 3: Hidden iframe attempt
+                    setTimeout(() => {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = customScheme;
+                        document.body.appendChild(iframe);
+                    }, 100);
+                    
+                } else if (platform === 'ios') {
+                    updateStatus('iOS detected - trying to open BPJSTKU app...');
+                    
+                    try {
+                        window.location.href = customScheme;
+                    } catch (e) {
+                        console.log('iOS custom scheme failed:', e);
+                    }
+                    
+                } else {
+                    updateStatus('Desktop detected - trying protocol handler...');
+                    
+                    try {
+                        window.location.href = customScheme;
+                    } catch (e) {
+                        console.log('Protocol handler failed:', e);
+                    }
                 }
                 
-                // Start the full fallback process after short delay
-                setTimeout(attemptAppOpen, 500);
+                // Start the full fallback process after delay
+                setTimeout(attemptAppOpen, 1000);
             }
 
             async function attemptAppOpen() {
@@ -278,6 +343,18 @@ function generateSmartRedirectPage(type, queryParams) {
                 
                 updateStatus('Unable to open app. Please download from app store.');
                 updateProgress(100);
+            }
+
+            function manualRetry() {
+                updateStatus('Retrying app detection...');
+                updateProgress(0);
+                
+                // Clear any existing attempts
+                const iframes = document.querySelectorAll('iframe');
+                iframes.forEach(iframe => iframe.remove());
+                
+                // Try again with fresh detection
+                setTimeout(immediateAppAttempt, 500);
             }
 
             // Start immediately when page loads
