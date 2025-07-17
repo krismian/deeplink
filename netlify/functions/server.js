@@ -71,26 +71,9 @@ app.get('/r/:type', (req, res) => {
   }
   
   if (isAndroid) {
-    // Android: Gunakan scheme bpjstku yang benar
-    const possibleSchemes = [
-      'bpjstku://cek-saldo',  // Scheme utama untuk cek saldo
-      'bpjstku://',           // Scheme ke halaman utama
-      `bpjstku://${type}`,    // Scheme dengan parameter type
-      `intent://cek-saldo#Intent;scheme=bpjstku;package=com.bpjstku;end`
-    ];
-    
-    // Ambil scheme dari query parameter jika ada, atau gunakan default
-    const schemeIndex = parseInt(req.query.attempt || '0');
-    const targetScheme = possibleSchemes[schemeIndex] || possibleSchemes[0];
-    
-    console.log('Android detected - redirecting to:', targetScheme);
-    
-    // Jika sudah mencoba semua scheme, redirect ke Play Store
-    if (schemeIndex >= possibleSchemes.length) {
-      return res.redirect(CONFIG.playStoreUrl);
-    }
-    
-    return res.redirect(targetScheme);
+    // Android: Gunakan landing page dengan JavaScript untuk better fallback handling
+    // Direct redirect ke custom scheme sering gagal di Android browser
+    return res.send(generateMobileRedirect(type, isIOS, isAndroid));
   }
   
   if (isIOS) {
@@ -161,21 +144,31 @@ app.post('/generate-link', (req, res) => {
 function generateMobileRedirect(type, isIOS, isAndroid) {
   const targetUrl = `${CONFIG.ownDomain}/r/${type}`; // URL untuk fallback browser
   
-  // Custom scheme untuk BPJSTKU app - menggunakan scheme yang benar
-  let customScheme;
-  if (type === 'product' || type === 'cek-saldo') {
-    customScheme = 'bpjstku://cek-saldo'; // Langsung ke halaman cek-saldo
-  } else {
-    customScheme = `bpjstku://${type}`; // Scheme BPJSTKU untuk halaman lain
-  }
+  // Android: Prioritas Intent URL, bukan custom scheme
+  let primaryScheme, fallbackSchemes;
   
-  const androidAppLink = `${CONFIG.ownDomain}/r/${type}`;
+  if (isAndroid) {
+    // Android: Intent URL lebih reliable
+    primaryScheme = `intent://cek-saldo#Intent;scheme=bpjstku;package=com.bpjstku;S.browser_fallback_url=${encodeURIComponent(CONFIG.playStoreUrl)};end`;
+    fallbackSchemes = [
+      'bpjstku://cek-saldo',
+      'bpjstku://'
+    ];
+  } else {
+    // iOS: Custom scheme
+    if (type === 'product' || type === 'cek-saldo') {
+      primaryScheme = 'bpjstku://cek-saldo';
+    } else {
+      primaryScheme = `bpjstku://${type}`;
+    }
+    fallbackSchemes = ['bpjstku://'];
+  }
   
   return `
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Opening App...</title>
+        <title>Opening BPJSTKU App...</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             body { 
@@ -226,12 +219,18 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
                 background: rgba(255,255,255,0.3);
                 transform: translateY(-2px);
             }
+            .debug-info {
+                margin-top: 20px;
+                font-size: 12px;
+                opacity: 0.7;
+                font-family: monospace;
+            }
         </style>
     </head>
     <body>
-        <h2>Opening App...</h2>
+        <h2>Opening BPJSTKU App...</h2>
         <div class="spinner"></div>
-        <p>If the app doesn't open automatically:</p>
+        <p>Redirecting to cek-saldo page...</p>
         
         <div class="fallback-buttons">
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
@@ -242,83 +241,97 @@ function generateMobileRedirect(type, isIOS, isAndroid) {
             </a>
         </div>
         
+        <div class="debug-info">
+            Platform: ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Other'}<br>
+            Target: cek-saldo
+        </div>
+        
         <script>
-            console.log('Platform detection - Android: ${isAndroid}, iOS: ${isIOS}');
+            console.log('=== BPJSTKU Deep Link Debug ===');
+            console.log('Platform - Android:', ${isAndroid}, 'iOS:', ${isIOS});
+            console.log('Target type:', '${type}');
             
-            let attempts = 0;
-            const maxAttempts = 4;
             let appOpened = false;
+            let attempts = 0;
             
-            function tryOpenApp() {
-                if (appOpened) return;
+            function openApp() {
+                if (appOpened) {
+                    console.log('App already opened, skipping');
+                    return;
+                }
                 
                 attempts++;
                 console.log('Attempt', attempts, 'to open app');
                 
                 if (${isAndroid}) {
-                    if (attempts === 1) {
-                        // Android: Coba custom scheme BPJSTKU
-                        console.log('Trying BPJSTKU scheme: ${customScheme}');
-                        window.location = '${customScheme}';
-                    } else if (attempts === 2) {
-                        // Coba scheme alternatif
-                        console.log('Trying alternative scheme: bpjstku://');
-                        window.location = 'bpjstku://';
-                    } else if (attempts === 3) {
-                        // Coba intent URL
-                        console.log('Trying intent URL');
-                        window.location = 'intent://cek-saldo#Intent;scheme=bpjstku;package=com.bpjstku;end';
-                    } else {
-                        // Fallback ke Play Store
-                        console.log('Redirecting to Play Store');
-                        window.location = '${CONFIG.playStoreUrl}';
-                    }
+                    // Android: Gunakan Intent URL langsung
+                    console.log('Android detected - using Intent URL');
+                    window.location.href = '${primaryScheme}';
                 } else if (${isIOS}) {
-                    if (attempts === 1) {
-                        // iOS: Coba custom scheme dulu
-                        console.log('Trying custom scheme: ${customScheme}');
-                        window.location = '${customScheme}';
-                    } else {
-                        // Fallback ke App Store
-                        console.log('Redirecting to App Store');
-                        window.location = '${CONFIG.appStoreUrl}';
-                    }
-                }
-                
-                // Retry jika belum berhasil
-                if (attempts < 4) {
-                    setTimeout(tryOpenApp, 2000);
+                    // iOS: Gunakan custom scheme
+                    console.log('iOS detected - using custom scheme:', '${primaryScheme}');
+                    window.location.href = '${primaryScheme}';
+                } else {
+                    // Other mobile
+                    console.log('Other mobile platform');
+                    window.location.href = '${CONFIG.playStoreUrl}';
                 }
             }
             
-            // Deteksi jika app berhasil dibuka
+            // Event listeners untuk deteksi app opened
             let startTime = Date.now();
             
-            document.addEventListener('visibilitychange', function() {
-                if (document.hidden) {
+            function markAppOpened(source) {
+                if (!appOpened) {
                     appOpened = true;
-                    console.log('App likely opened successfully');
+                    console.log('✅ App opened successfully via', source);
+                    document.querySelector('.spinner').style.display = 'none';
+                    document.querySelector('h2').textContent = 'Opening app...';
+                }
+            }
+            
+            // Method 1: Visibility change (paling reliable)
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && Date.now() - startTime > 500) {
+                    markAppOpened('visibility change');
                 }
             });
             
+            // Method 2: Window blur  
             window.addEventListener('blur', function() {
                 if (Date.now() - startTime > 1000) {
-                    appOpened = true;
-                    console.log('App opened - window lost focus');
+                    markAppOpened('window blur');
                 }
             });
             
-            // Mulai proses buka app
-            setTimeout(tryOpenApp, 500);
+            // Method 3: Page hide
+            window.addEventListener('pagehide', function() {
+                markAppOpened('page hide');
+            });
             
-            // Safety fallback - jika tidak ada yang terjadi dalam 8 detik
+            // Start app opening process
+            console.log('Starting app opening process in 1 second...');
             setTimeout(function() {
-                if (!appOpened && attempts === 0) {
-                    console.log('Timeout - showing fallback options');
-                    document.querySelector('.fallback-buttons').style.opacity = '1';
-                    document.querySelector('.fallback-buttons').style.animation = 'none';
-                }
-            }, 8000);
+                openApp();
+                
+                // Fallback timeout - show download options
+                setTimeout(function() {
+                    if (!appOpened) {
+                        console.log('❌ App not opened after 5 seconds, showing fallback');
+                        document.querySelector('.fallback-buttons').style.opacity = '1';
+                        document.querySelector('.fallback-buttons').style.animation = 'none';
+                        document.querySelector('h2').textContent = 'App not installed?';
+                        document.querySelector('.spinner').style.display = 'none';
+                    }
+                }, 5000);
+            }, 1000);
+            
+            // Error handling
+            window.addEventListener('error', function(e) {
+                console.log('Error occurred:', e.message);
+            });
+            
+            console.log('=== End Debug Info ===');
         </script>
     </body>
     </html>
