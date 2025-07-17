@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "pure-manual-deeplink",
   "version": "1.0.0",
   "description": "Firebase-independent deep link system for mobile apps",
@@ -6,11 +6,16 @@
   "scripts": {
     "start": "node pure-manual-deeplink.js",
     "dev": "nodemon pure-manual-deeplink.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "netlify deploy --prod"
   },
-  "keywords": ["deeplink", "mobile", "firebase-independent"],
-  "author": "Your Name",
+  "keywords": [
+    "deeplink",
+    "firebase-independent",
+    "mobile",
+    "redirect",
+    "serverless"
+  ],
+  "author": "BPJSTKU",
   "license": "MIT",
   "dependencies": {
     "express": "^5.1.0",
@@ -18,5 +23,12 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krismian/deeplink.git"
   }
 }

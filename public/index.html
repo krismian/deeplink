@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BPJSTKU Deep Link System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .logo { font-size: 4em; margin-bottom: 20px; }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔗</div>
+        <h1>BPJSTKU Deep Link System</h1>
+        <p>Pure Manual Deep Linking - Firebase Independent</p>
+        <div>
+            <span class="status">🟢 Active</span>
+            <span class="status">🔒 Secure</span>
+            <span class="status">⚡ Fast</span>
+        </div>
+        <br><br>
+        <p>System is loading...</p>
+        <script>
+            // Redirect to the serverless function
+            window.location.href = '/.netlify/functions/server/';
+        </script>
+    </div>
+</body>
+</html>
