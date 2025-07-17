@@ -1,14 +1,20 @@
 const express = require('express');
 const app = express();
 
-// Configuration
+// Configuration with alternative package names to test
 const CONFIG = {
-  domain: 'https://unilink.netlify.app',
+  domain: 'https://elegant-kleicha-42b5e8.netlify.app',
   customScheme: 'bpjstku',
-  androidPackage: 'com.bpjstku',
+  androidPackage: 'com.bpjstku', // Original package
+  alternativePackages: [
+    'com.bpjamsostek.mobile', // Alternative package 1
+    'id.bpjsketenagakerjaan.mobile', // Alternative package 2
+    'com.bpjs.ketenagakerjaan', // Alternative package 3
+    'com.bpjstku.mobile' // Alternative package 4
+  ],
   iosAppId: '123456789',
-  maxRedirectAttempts: 3,
-  attemptDelay: 1500
+  maxRedirectAttempts: 6,
+  attemptDelay: 2000
 };
 
 app.use(express.json());
@@ -124,7 +130,10 @@ function generateSmartRedirectPage(type, queryParams) {
                     🍎 Download BPJSTKU for iOS
                 </a>
                 <button onclick="simpleAppLaunch()" class="btn" style="background: rgba(0,255,0,0.2); border-color: rgba(0,255,0,0.3);">
-                    📱 Simple App Launch
+                    📱 Test All Packages
+                </button>
+                <button onclick="testRealPackage()" class="btn" style="background: rgba(255,0,255,0.2); border-color: rgba(255,0,255,0.3);">
+                    🔍 Find Real Package
                 </button>
                 <button onclick="manualRetry()" class="btn" style="background: rgba(255,165,0,0.2); border-color: rgba(255,165,0,0.3);">
                     🔄 Try Again
@@ -400,35 +409,79 @@ function generateSmartRedirectPage(type, queryParams) {
                 updateProgress(100);
             }
 
+            function testRealPackage() {
+                updateStatus('🔍 Finding real BPJSTKU package name...');
+                
+                // Redirect to Play Store to check actual package name
+                const playStoreUrl = 'https://play.google.com/store/search?q=bpjstku+bpjs+ketenagakerjaan&c=apps';
+                
+                updateStatus('Opening Play Store to find BPJSTKU app...');
+                
+                // Open Play Store search in new tab
+                window.open(playStoreUrl, '_blank');
+                
+                // Show instructions
+                setTimeout(() => {
+                    updateStatus('📋 Instructions: 1) Find BPJSTKU app in Play Store 2) Check URL for package name 3) Come back and use "Test All Packages"');
+                }, 2000);
+                
+                console.log('User directed to Play Store to find real package name');
+            }
+
             function simpleAppLaunch() {
-                updateStatus('📱 Trying simple app launch...');
+                updateStatus('📱 Testing multiple package names...');
                 const platform = detectUserAgent();
                 const simpleScheme = '${CONFIG.customScheme}://';
                 
-                console.log('Simple app launch for platform:', platform);
+                console.log('Testing multiple packages for platform:', platform);
                 
                 if (platform === 'android') {
-                    // Very simple methods to just open the app
-                    const simpleMethods = [
-                        // Just open the app, no specific page
-                        'intent://launch#Intent;scheme=${CONFIG.customScheme};package=${CONFIG.androidPackage};end',
-                        // Basic scheme
-                        simpleScheme,
-                        // Alternative simple intent
-                        'intent://#Intent;package=${CONFIG.androidPackage};end'
-                    ];
+                    // Test with main package first
+                    const allPackages = [CONFIG.androidPackage, ...CONFIG.alternativePackages];
                     
-                    simpleMethods.forEach((method, index) => {
+                    console.log('Testing packages:', allPackages);
+                    
+                    allPackages.forEach((packageName, index) => {
                         setTimeout(() => {
-                            console.log('Trying simple launch method', index + 1, ':', method);
-                            updateStatus('Trying method ' + (index + 1) + ': Simple launch...');
+                            updateStatus('Testing package: ' + packageName);
+                            console.log('Trying package:', packageName);
+                            
+                            // Method 1: Direct app launch with specific package
+                            const packageLaunchIntent = 'intent://launch#Intent;package=' + packageName + ';end';
                             try {
-                                window.location.href = method;
+                                window.location.href = packageLaunchIntent;
+                                console.log('Launched intent for:', packageName);
                             } catch (e) {
-                                console.log('Simple launch method', index + 1, 'failed:', e);
+                                console.log('Package launch failed for', packageName, ':', e);
                             }
-                        }, index * 800);
+                            
+                        }, index * 1500);
                     });
+                    
+                    // Also try custom scheme methods
+                    setTimeout(() => {
+                        updateStatus('Trying custom schemes...');
+                        const customSchemes = [
+                            '${CONFIG.customScheme}://',
+                            'bpjstku://main',
+                            'bpjsketenagakerjaan://',
+                            'bpjamsostek://',
+                            'bpjs://'
+                        ];
+                        
+                        customSchemes.forEach((scheme, index) => {
+                            setTimeout(() => {
+                                console.log('Trying custom scheme:', scheme);
+                                try {
+                                    window.location.href = scheme;
+                                } catch (e) {
+                                    console.log('Custom scheme failed:', scheme, e);
+                                }
+                            }, index * 500);
+                        });
+                        
+                    }, allPackages.length * 1500 + 1000);
+                    
                 } else {
                     // For other platforms
                     try {

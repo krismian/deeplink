@@ -84,6 +84,22 @@
             </a>
         </div>
 
+        <h3>Package Name Tests:</h3>
+        <div>
+            <button onclick="testPackage('com.bpjstku')" class="test-link">
+                📦 Test: com.bpjstku
+            </button>
+            <button onclick="testPackage('com.bpjamsostek.mobile')" class="test-link">
+                📦 Test: com.bpjamsostek.mobile
+            </button>
+            <button onclick="testPackage('id.bpjsketenagakerjaan.mobile')" class="test-link">
+                📦 Test: id.bpjsketenagakerjaan.mobile
+            </button>
+            <button onclick="testPackage('com.bpjs.ketenagakerjaan')" class="test-link">
+                📦 Test: com.bpjs.ketenagakerjaan
+            </button>
+        </div>
+
         <h3>Force Mobile Tests:</h3>
         <div>
             <button onclick="testMobile('android')" class="test-link mobile-test">
@@ -148,6 +164,31 @@
                 hasMobile: /mobile/i.test(navigator.userAgent)
             }
         }, null, 2);
+
+        // Test specific package
+        function testPackage(packageName) {
+            console.log('Testing package:', packageName);
+            
+            const methods = [
+                `intent://launch#Intent;package=${packageName};end`,
+                `intent://#Intent;package=${packageName};end`,
+                `intent://main#Intent;package=${packageName};end`
+            ];
+            
+            methods.forEach((method, index) => {
+                setTimeout(() => {
+                    console.log('Trying method for', packageName, ':', method);
+                    try {
+                        window.location.href = method;
+                    } catch (e) {
+                        console.log('Failed:', e);
+                    }
+                }, index * 1000);
+            });
+            
+            // Update results
+            document.getElementById('api-results').textContent = `Testing package: ${packageName}\nMethods: ${methods.join('\n')}`;
+        }
 
         // Test mobile
         async function testMobile(platform) {
