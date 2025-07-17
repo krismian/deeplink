@@ -58,7 +58,7 @@ app.get('/r/:type/:id', (req, res) => {
 // Generate Firebase dynamic link on-demand
 app.get('/firebase-link/:type/:id', (req, res) => {
   const { type, id } = req.params;
-  const targetUrl = `${CONFIG.ownDomain}/${type}/${id}`;
+  const targetUrl = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
   
   // Generate Firebase dynamic link URL manually
   const firebaseLink = `${CONFIG.firebaseDomain}/?` + 
@@ -77,7 +77,7 @@ app.post('/generate-link', (req, res) => {
   let link;
   if (useFirebase) {
     // Generate Firebase link
-    const targetUrl = `${CONFIG.ownDomain}/${type}/${id}`;
+    const targetUrl = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
     link = `${CONFIG.firebaseDomain}/?` + 
       `link=${encodeURIComponent(targetUrl)}` +
       `&apn=${CONFIG.androidPackage}` +
