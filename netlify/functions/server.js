@@ -103,9 +103,9 @@ app.post('/generate-link', (req, res) => {
 });
 
 function generateMobileRedirect(type, id, isIOS, isAndroid) {
-  const targetUrl = `${CONFIG.ownDomain}/${type}/${id}`;
+  const targetUrl = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
   const customScheme = `myapp://${type}/${id}`;
-  const androidAppLink = `${CONFIG.ownDomain}/${type}/${id}`;
+  const androidAppLink = `${CONFIG.ownDomain}/r/${type}/${id}`; // Perbaiki: tambahkan /r/
   
   return `
     <!DOCTYPE html>
