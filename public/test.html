@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BPJSTKU Deep Link Test Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .test-link {
+            display: block;
+            margin: 15px 0;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.3s;
+        }
+        .test-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .test-link h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.2em;
+        }
+        .test-link p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+        .url {
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-top: 8px;
+        }
+        .api-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .create-form {
+            margin-top: 20px;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+        .btn {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 BPJSTKU Deep Link Test Center</h1>
+            <p>Click the links below to test the deep linking system</p>
+        </div>
+
+        <h2>📱 Test Deep Links</h2>
+        
+        <a href="/r/cek-saldo?feature=jht&source=firebase" class="test-link">
+            <h3>💰 Cek Saldo JHT</h3>
+            <p>Buka fitur cek saldo Jaminan Hari Tua (replacement untuk Firebase link)</p>
+            <div class="url">/r/cek-saldo?feature=jht&source=firebase</div>
+        </a>
+
+        <a href="/r/profile?userId=12345&name=john&age=25" class="test-link">
+            <h3>👤 User Profile</h3>
+            <p>Open user profile with ID 12345, name John, age 25</p>
+            <div class="url">/r/profile?userId=12345&name=john&age=25</div>
+        </a>
+
+        <a href="/r/jmo?menu=jht&action=cek-saldo" class="test-link">
+            <h3>📱 JMO - Jaminan Hari Tua</h3>
+            <p>Direct link ke menu Jaminan Hari Tua untuk cek saldo</p>
+            <div class="url">/r/jmo?menu=jht&action=cek-saldo</div>
+        </a>
+
+        <a href="/r/product?id=67890&category=electronics&brand=samsung" class="test-link">
+            <h3>📦 Product Page</h3>
+            <p>Open product page for Samsung electronics with ID 67890</p>
+            <div class="url">/r/product?id=67890&category=electronics&brand=samsung</div>
+        </a>
+
+        <a href="/r/tutorial?page=cek-saldo&type=jht&step=1" class="test-link">
+            <h3>📚 Tutorial Cek Saldo</h3>
+            <p>Buka tutorial cara cek saldo JHT step by step</p>
+            <div class="url">/r/tutorial?page=cek-saldo&type=jht&step=1</div>
+        </a>
+
+        <a href="/r/event?eventId=999&location=jakarta&date=2025-08-15" class="test-link">
+            <h3>🎉 Event Details</h3>
+            <p>Open event page for Jakarta event on August 15, 2025</p>
+            <div class="url">/r/event?eventId=999&location=jakarta&date=2025-08-15</div>
+        </a>
+
+        <a href="/r/notification?notifId=abc123&type=message&sender=system" class="test-link">
+            <h3>🔔 Notification</h3>
+            <p>Open system message notification with ID abc123</p>
+            <div class="url">/r/notification?notifId=abc123&type=message&sender=system</div>
+        </a>
+
+        <a href="/r/promo?code=SUMMER2025&discount=50&valid_until=2025-08-31" class="test-link">
+            <h3>🎁 Promo Code</h3>
+            <p>Open summer 2025 promo with 50% discount, valid until Aug 31</p>
+            <div class="url">/r/promo?code=SUMMER2025&discount=50&valid_until=2025-08-31</div>
+        </a>
+
+        <a href="/r/article?id=tech001&category=technology&author=admin" class="test-link">
+            <h3>📰 Article</h3>
+            <p>Open technology article tech001 by admin</p>
+            <div class="url">/r/article?id=tech001&category=technology&author=admin</div>
+        </a>
+
+        <div class="api-section">
+            <h2>� Firebase Dynamic Links Migration</h2>
+            <p><strong>Current Firebase Link:</strong> <code>https://bpjsketenagakerjaan.page.link/cek-saldo</code></p>
+            <p><strong>New Deep Link:</strong> <code>https://unilink.netlify.app/r/cek-saldo?feature=jht</code></p>
+            
+            <div style="background: rgba(255,193,7,0.2); padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                <h4>⚠️ Migration Status</h4>
+                <p>✅ <strong>Identified:</strong> Cek Saldo JHT feature<br>
+                ✅ <strong>Mapped:</strong> `/r/cek-saldo?feature=jht&source=firebase`<br>
+                ✅ <strong>Compatible:</strong> Ready for August 25, 2025 shutdown<br>
+                🔧 <strong>Action:</strong> Replace Firebase links with new deep links</p>
+            </div>
+
+            <h3>🔗 Migration Mapping:</h3>
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.9em;">
+                <strong>Before:</strong> https://bpjsketenagakerjaan.page.link/cek-saldo<br>
+                <strong>After:</strong> https://unilink.netlify.app/r/cek-saldo?feature=jht<br><br>
+                
+                <strong>Custom Scheme:</strong> bpjstku://cek-saldo?feature=jht<br>
+                <strong>Intent URL:</strong> intent://cek-saldo?feature=jht#Intent;scheme=bpjstku;package=com.bpjstku;end
+            </div>
+
+            <a href="/r/cek-saldo?feature=jht&source=firebase&utm_campaign=migration" class="btn" style="margin: 15px 10px 0 0;">Test Migration Link</a>
+            <a href="/api/analytics/cek-saldo" class="btn" target="_blank" style="margin: 15px 0 0 0; background: #007bff;">View Analytics</a>
+        </div>
+
+        <div class="api-section">
+            <h2>�🛠️ Create Custom Deep Link</h2>
+            <p>Use the API to create your own deep link:</p>
+            
+            <div class="create-form">
+                <div class="form-group">
+                    <label for="linkType">Link Type:</label>
+                    <input type="text" id="linkType" placeholder="e.g., profile, product, event" value="custom">
+                </div>
+                <div class="form-group">
+                    <label for="param1">Parameter 1 (key=value):</label>
+                    <input type="text" id="param1" placeholder="e.g., id=123" value="id=12345">
+                </div>
+                <div class="form-group">
+                    <label for="param2">Parameter 2 (key=value):</label>
+                    <input type="text" id="param2" placeholder="e.g., name=john" value="action=view">
+                </div>
+                <div class="form-group">
+                    <label for="param3">Parameter 3 (key=value):</label>
+                    <input type="text" id="param3" placeholder="e.g., category=tech" value="">
+                </div>
+                <button class="btn" onclick="createDeepLink()">Create Deep Link</button>
+            </div>
+            
+            <div class="result" id="result">
+                <h3>Generated Deep Link:</h3>
+                <div id="generatedLink"></div>
+                <br>
+                <a id="testLink" class="btn" target="_blank">Test This Link</a>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>📊 API Endpoints</h2>
+            <p><strong>Health Check:</strong> <a href="/api/health" target="_blank" style="color: #ffd700;">/api/health</a></p>
+            <p><strong>QR Code:</strong> <a href="/api/qr?url=https://unilink.netlify.app/r/test" target="_blank" style="color: #ffd700;">/api/qr?url=...</a></p>
+            <p><strong>Analytics:</strong> <a href="/api/analytics/profile" target="_blank" style="color: #ffd700;">/api/analytics/profile</a></p>
+        </div>
+    </div>
+
+    <script>
+        function createDeepLink() {
+            const type = document.getElementById('linkType').value.trim();
+            const param1 = document.getElementById('param1').value.trim();
+            const param2 = document.getElementById('param2').value.trim();
+            const param3 = document.getElementById('param3').value.trim();
+
+            if (!type) {
+                alert('Please enter a link type');
+                return;
+            }
+
+            // Build parameters object
+            const params = {};
+            if (param1) {
+                const [key1, val1] = param1.split('=');
+                if (key1 && val1) params[key1] = val1;
+            }
+            if (param2) {
+                const [key2, val2] = param2.split('=');
+                if (key2 && val2) params[key2] = val2;
+            }
+            if (param3) {
+                const [key3, val3] = param3.split('=');
+                if (key3 && val3) params[key3] = val3;
+            }
+
+            // Call API to create deep link
+            fetch('/api/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: type,
+                    ...params
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                const linkDiv = document.getElementById('generatedLink');
+                const testLink = document.getElementById('testLink');
+                
+                linkDiv.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; font-family: monospace;">
+                        ${data.link}
+                    </div>
+                    <br>
+                    <strong>QR Code:</strong> <a href="${data.qrCode}" target="_blank" style="color: #ffd700;">${data.qrCode}</a><br>
+                    <strong>Analytics:</strong> <a href="${data.analytics}" target="_blank" style="color: #ffd700;">${data.analytics}</a>
+                `;
+                
+                testLink.href = data.link;
+                testLink.textContent = 'Test This Link';
+                
+                resultDiv.style.display = 'block';
+            })
+            .catch(error => {
+                alert('Error creating deep link: ' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -429,6 +429,11 @@ app.get('/r/:type', (req, res) => {
   // Log the request
   console.log(`Deep link request: ${type}, Platform: ${platform}, Params:`, queryParams);
 
+  // Special handling for Firebase migration links
+  if (type === 'cek-saldo' && queryParams.source === 'firebase') {
+    console.log('🔥 Firebase Dynamic Link migration detected for cek-saldo');
+  }
+
   // Handle bot/crawler requests
   if (platform === 'bot') {
     return res.send(generateSocialMetaPage(type, queryParams));
