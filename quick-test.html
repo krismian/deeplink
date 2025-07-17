@@ -18,30 +18,44 @@
     <h1>🚀 QUICK TEST</h1>
     
     <div class="info">
-        <strong>Strategy Baru (Simple):</strong><br>
-        ✅ Direct window.location.href (no iframe)<br>
-        ✅ Faster retry: 1 detik<br>
-        ✅ Error timeout: 5 detik<br>
-        ✅ Better logging
+        <strong>Strategy Baru (Firebase Dynamic Link):</strong><br>
+        ✅ Generate Firebase Dynamic Link otomatis<br>
+        ✅ Server-side redirect langsung (HTTP 302)<br>
+        ✅ Compatible dengan Firebase SDK di app<br>
+        ✅ Target URL: /app/:type (untuk app handling)<br>
+        ✅ Tidak ada custom scheme, pure Firebase
     </div>
 
     <a href="https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo" class="test-link">
-        📱 TEST CEK SALDO
+        � TEST CEK SALDO (Firebase Dynamic Link)
     </a>
     
     <a href="https://elegant-kleicha-42b5e8.netlify.app/r/cek-saldo?user=123&action=view" class="test-link">
-        📱 TEST WITH PARAMETERS
+        � TEST WITH PARAMETERS (Firebase Dynamic Link)
+    </a>
+    
+    <a href="https://elegant-kleicha-42b5e8.netlify.app/app/cek-saldo" class="test-link" style="background: #6c757d;">
+        📱 TEST APP ENDPOINT (Direct)
+    </a>
+    
+    <a href="https://elegant-kleicha-42b5e8.netlify.app/app/cek-saldo?user=123&action=view" class="test-link" style="background: #6c757d;">
+        � TEST APP ENDPOINT WITH PARAMS (Direct)
     </a>
     
     <div class="info">
-        <strong>Expected Flow:</strong><br>
-        1. Loading page dengan "Opening BPJSTKU App..."<br>
-        2. Step 1/4: Custom scheme (direct)<br>
-        3. Step 2/4: Custom scheme retry<br>
-        4. Step 3/4: Android Intent URL<br>
-        5. Step 4/4: Error message (jika gagal)<br>
+        <strong>Expected Flow (Firebase Dynamic Link):</strong><br>
+        <strong>1. Manual URL → Firebase Dynamic Link</strong><br>
+        &nbsp;&nbsp;&nbsp;`/r/cek-saldo` → `individual-engagement-3.web.app/?link=...`<br>
         <br>
-        <strong>Total time: ~5 detik</strong>
+        <strong>2. Firebase Processes Link</strong><br>
+        &nbsp;&nbsp;&nbsp;- Check if app installed<br>
+        &nbsp;&nbsp;&nbsp;- Open app dengan URL `/app/cek-saldo`<br>
+        &nbsp;&nbsp;&nbsp;- Firebase SDK handle URL di app Anda<br>
+        <br>
+        <strong>3. App Endpoint (Fallback)</strong><br>
+        &nbsp;&nbsp;&nbsp;Jika dibuka di browser, show instruction<br>
+        <br>
+        <strong>✅ Kompatibel dengan Firebase SDK existing di app!</strong>
     </div>
     
     <div class="log" id="testLog" style="display:none;">

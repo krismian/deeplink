@@ -44,7 +44,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
   }]);
 });
 
-// Main redirect endpoint - Support transisi dari Firebase
+// Main redirect endpoint - FIREBASE DYNAMIC LINK STRATEGY
 app.get('/r/:type', (req, res) => {
   const { type } = req.params;
   const userAgent = req.get('User-Agent') || '';
@@ -78,24 +78,113 @@ app.get('/r/:type', (req, res) => {
     return res.send(generateBotResponse(type));
   }
   
-  if (isAndroid) {
-    // Android: Gunakan landing page dengan JavaScript untuk better fallback handling
-    // Direct redirect ke custom scheme sering gagal di Android browser
-    return res.send(generateMobileRedirect(type, isIOS, isAndroid, queryString));
-  }
-  
-  if (isIOS) {
-    // iOS: Gunakan landing page karena lebih reliable
-    return res.send(generateMobileRedirect(type, isIOS, isAndroid, queryString));
-  }
-  
+  // NEW STRATEGY: Generate Firebase Dynamic Link and redirect to it
   if (isMobile) {
-    // Mobile lain: landing page
-    return res.send(generateMobileRedirect(type, isIOS, isAndroid, queryString));
+    // Generate Firebase Dynamic Link dengan parameter yang akan diteruskan ke app
+    const targetUrl = `${CONFIG.ownDomain}/app/${type}${queryString}`; // URL yang akan dibuka di app
+    
+    // Firebase Dynamic Link format
+    const firebaseLink = `${CONFIG.firebaseDomain}/?` + 
+      `link=${encodeURIComponent(targetUrl)}` +
+      `&apn=${CONFIG.androidPackage}` +
+      `&ibi=${CONFIG.iosBundleId}` +
+      `&isi=${CONFIG.iosAppId}`;
+    
+    console.log('Generated Firebase Link:', firebaseLink);
+    
+    // Direct redirect ke Firebase Dynamic Link
+    return res.redirect(302, firebaseLink);
   } else {
     // Desktop users - show web version with app promotion
     return res.send(generateDesktopResponse(type));
   }
+});
+
+// App endpoint - untuk handle Firebase Dynamic Link redirect
+app.get('/app/:type', (req, res) => {
+  const { type } = req.params;
+  const userAgent = req.get('User-Agent') || '';
+  
+  // Ambil semua query parameters dari URL
+  const queryParams = req.query;
+  const queryString = Object.keys(queryParams).length > 0 
+    ? '?' + new URLSearchParams(queryParams).toString() 
+    : '';
+  
+  // Log untuk analytics
+  console.log('App endpoint called:', {
+    type, 
+    queryParams,
+    queryString,
+    userAgent: userAgent.slice(0, 100),
+    note: 'This should be handled by Firebase SDK in app'
+  });
+  
+  // Jika endpoint ini dipanggil di browser (bukan di app), show instruction
+  return res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>BPJSTKU - ${type}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                text-align: center; 
+                padding: 50px 20px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            .info {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 30px;
+                border-radius: 15px;
+                margin: 20px auto;
+                max-width: 400px;
+            }
+            .btn {
+                display: inline-block;
+                padding: 12px 24px;
+                margin: 10px;
+                background: rgba(255,255,255,0.2);
+                color: white;
+                text-decoration: none;
+                border-radius: 25px;
+                border: 2px solid rgba(255,255,255,0.3);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>BPJSTKU App Content</h1>
+        <div class="info">
+            <h3>📱 ${type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+            <p>This content is designed to be viewed in the BPJSTKU mobile app.</p>
+            <p><strong>Parameters:</strong> ${queryString || 'none'}</p>
+            <br>
+            <p>If you're seeing this in a browser, please:</p>
+            <ol style="text-align: left;">
+                <li>Open the BPJSTKU app on your device</li>
+                <li>Or download the app from the store</li>
+            </ol>
+        </div>
+        
+        <div>
+            <a href="${CONFIG.playStoreUrl}" class="btn">Download Android App</a>
+            <a href="${CONFIG.appStoreUrl}" class="btn">Download iOS App</a>
+        </div>
+        
+        <div style="margin-top: 30px; font-size: 12px; opacity: 0.7;">
+            <p>App endpoint: /app/${type}${queryString}</p>
+            <p>This URL should be handled by Firebase SDK in your app</p>
+        </div>
+    </body>
+    </html>
+  `);
 });
 
 // Generate Firebase dynamic link on-demand
@@ -183,8 +272,6 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
     <head>
         <title>Opening BPJSTKU App...</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!-- META REFRESH: Immediate redirect to app scheme -->
-        <meta http-equiv="refresh" content="0;url=${primaryScheme}">
         <style>
             body { 
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -214,7 +301,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             .fallback-buttons {
                 margin-top: 30px;
                 opacity: 0;
-                animation: fadeIn 1s ease-in 2s forwards;
+                animation: fadeIn 1s ease-in 3s forwards;
             }
             @keyframes fadeIn {
                 to { opacity: 1; }
@@ -246,7 +333,6 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 background: rgba(255, 255, 255, 0.1);
                 border-radius: 15px;
                 border: 2px solid rgba(255, 255, 255, 0.2);
-                display: none;
             }
             .error-message h3 {
                 margin-top: 0;
@@ -271,7 +357,7 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
     <body>
         <h2>Opening BPJSTKU App...</h2>
         <div class="spinner"></div>
-        <p>Redirecting to: ${type}${queryString || ''}</p>
+        <p>Redirecting with parameters: ${queryString || 'no parameters'}</p>
         
         <div class="fallback-buttons">
             <a href="${isIOS ? CONFIG.appStoreUrl : CONFIG.playStoreUrl}" class="btn">
@@ -282,9 +368,9 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
             </a>
         </div>
         
-        <div class="error-message" id="errorMessage">
+        <div class="error-message" style="display: none;">
             <h3>⚠️ Unable to Open App</h3>
-            <p>We tried to open the BPJSTKU app but were unsuccessful.</p>
+            <p>We tried multiple methods to open the BPJSTKU app but were unsuccessful.</p>
             <p><strong>Possible reasons:</strong></p>
             <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
                 <li>App is not installed on your device</li>
@@ -301,30 +387,133 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
         
         <div class="debug-info">
             Platform: ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Other'}<br>
-            Primary Scheme: ${primaryScheme}<br>
-            Fallback Scheme: ${fallbackScheme || 'N/A'}<br>
-            Method: Meta Refresh + JavaScript Fallback
+            Target: ${type}${queryString || ''}<br>
+            Full URL: ${targetUrl}
         </div>
         
         <div class="attempt-info" id="attemptInfo" style="display: none;">
             <strong>Attempting to open app...</strong>
-            <div id="attemptDetails">Using meta refresh redirect...</div>
+            <div id="attemptDetails"></div>
         </div>
         
         <script>
-            console.log('=== BPJSTKU Deep Link Debug (Meta Refresh) ===');
+            console.log('=== BPJSTKU Deep Link Debug ===');
             console.log('Platform - Android:', ${isAndroid}, 'iOS:', ${isIOS});
             console.log('Target type:', '${type}');
             console.log('Query string:', '${queryString}');
             console.log('Primary scheme:', '${primaryScheme}');
             console.log('Fallback scheme:', '${fallbackScheme || 'N/A'}');
-            console.log('Method: Meta refresh should have triggered immediately');
+            console.log('User Agent:', navigator.userAgent);
+            console.log('Current URL:', window.location.href);
             
             let appOpened = false;
-            let startTime = Date.now();
+            let attempts = 0;
             
-            // Show attempt info immediately
-            document.getElementById('attemptInfo').style.display = 'block';
+            function openApp() {
+                if (appOpened) {
+                    console.log('App already opened, skipping');
+                    return;
+                }
+                
+                attempts++;
+                console.log('Attempt', attempts, 'to open app');
+                
+                // Show attempt info
+                updateAttemptInfo(attempts);
+                
+                if (${isAndroid}) {
+                    if (attempts === 1) {
+                        // Android: Coba custom scheme dulu
+                        console.log('Android attempt 1 - custom scheme:', '${primaryScheme}');
+                        tryOpenApp('${primaryScheme}');
+                    } else if (attempts === 2) {
+                        // Android: Coba custom scheme lagi (kadang perlu 2x)
+                        console.log('Android attempt 2 - custom scheme retry:', '${primaryScheme}');
+                        tryOpenApp('${primaryScheme}');
+                    } else if (attempts === 3) {
+                        // Android: Baru sekarang coba Intent URL
+                        console.log('Android attempt 3 - Intent URL:', '${fallbackScheme}');
+                        tryOpenApp('${fallbackScheme}');
+                    } else {
+                        // Final fallback - show error message
+                        console.log('Android attempt 4 - Show error message');
+                        showFailureMessage();
+                        return;
+                    }
+                } else if (${isIOS}) {
+                    if (attempts === 1) {
+                        // iOS: Custom scheme
+                        console.log('iOS attempt 1 - custom scheme:', '${primaryScheme}');
+                        tryOpenApp('${primaryScheme}');
+                    } else {
+                        // Fallback ke App Store
+                        console.log('iOS attempt 2 - App Store');
+                        showFailureMessage();
+                        return;
+                    }
+                } else {
+                    // Other mobile
+                    console.log('Other mobile platform');
+                    showFailureMessage();
+                    return;
+                }
+                
+                // Retry setelah interval yang lebih cepat
+                if (attempts < 4) { // Android ada 4 attempts
+                    const retryDelay = 1000; // 1 detik untuk semua attempts (lebih cepat)
+                    setTimeout(openApp, retryDelay);
+                }
+            }
+            
+            function updateAttemptInfo(attemptNum) {
+                const attemptInfo = document.getElementById('attemptInfo');
+                const attemptDetails = document.getElementById('attemptDetails');
+                
+                attemptInfo.style.display = 'block';
+                
+                if (${isAndroid}) {
+                    if (attemptNum === 1) {
+                        attemptDetails.innerHTML = 'Step 1/4: Trying custom app scheme (iframe)...';
+                    } else if (attemptNum === 2) {
+                        attemptDetails.innerHTML = 'Step 2/4: Trying custom app scheme (direct)...';
+                    } else if (attemptNum === 3) {
+                        attemptDetails.innerHTML = 'Step 3/4: Trying Android Intent URL...';
+                    } else {
+                        attemptDetails.innerHTML = 'Step 4/4: All methods failed, showing options...';
+                    }
+                } else if (${isIOS}) {
+                    if (attemptNum === 1) {
+                        attemptDetails.innerHTML = 'Step 1/2: Trying custom app scheme...';
+                    } else {
+                        attemptDetails.innerHTML = 'Step 2/2: App not responding, showing options...';
+                    }
+                }
+            }
+            
+            function showFailureMessage() {
+                document.querySelector('.spinner').style.display = 'none';
+                document.querySelector('h2').textContent = 'Unable to Open App';
+                document.querySelector('p').textContent = 'We encountered issues opening the BPJSTKU app.';
+                document.querySelector('.error-message').style.display = 'block';
+                document.querySelector('.fallback-buttons').style.opacity = '1';
+                document.querySelector('.fallback-buttons').style.animation = 'none';
+                document.getElementById('attemptInfo').style.display = 'none';
+            }
+            
+            function tryOpenApp(scheme) {
+                console.log('Trying to open app with scheme:', scheme);
+                
+                // Method: Direct window.location.href (paling simple dan reliable)
+                try {
+                    window.location.href = scheme;
+                    console.log('Direct redirect attempted to:', scheme);
+                } catch (e) {
+                    console.log('Direct scheme failed:', e.message);
+                }
+            }
+            
+            // Event listeners untuk deteksi app opened
+            let startTime = Date.now();
             
             function markAppOpened(source) {
                 if (!appOpened) {
@@ -337,72 +526,51 @@ function generateMobileRedirect(type, isIOS, isAndroid, queryString = '') {
                 }
             }
             
-            function showFailureMessage() {
-                if (!appOpened) {
-                    console.log('❌ Showing failure message');
-                    document.querySelector('.spinner').style.display = 'none';
-                    document.querySelector('h2').textContent = 'Unable to Open App';
-                    document.querySelector('p').textContent = 'Meta refresh did not open the app.';
-                    document.getElementById('errorMessage').style.display = 'block';
-                    document.querySelector('.fallback-buttons').style.opacity = '1';
-                    document.querySelector('.fallback-buttons').style.animation = 'none';
-                    document.getElementById('attemptInfo').style.display = 'none';
-                }
-            }
-            
-            // Detection methods
+            // Method 1: Visibility change (paling reliable)
             document.addEventListener('visibilitychange', function() {
-                if (document.hidden && Date.now() - startTime > 50) {
+                if (document.hidden && Date.now() - startTime > 100) { // Lebih cepat lagi: 100ms
                     markAppOpened('visibility change');
                 }
             });
             
+            // Method 2: Window blur  
             window.addEventListener('blur', function() {
-                if (Date.now() - startTime > 100) {
+                if (Date.now() - startTime > 300) { // Lebih cepat: 300ms
                     markAppOpened('window blur');
                 }
             });
             
+            // Method 3: Focus change
+            window.addEventListener('focus', function() {
+                // Jika kembali focus dalam waktu singkat, berarti app tidak terbuka
+                if (Date.now() - startTime < 1000 && attempts > 0) {
+                    console.log('Window regained focus quickly, app might not have opened');
+                }
+            });
+            
+            // Method 3: Page hide
             window.addEventListener('pagehide', function() {
                 markAppOpened('page hide');
             });
             
-            // Fallback after meta refresh
+            // Start app opening process LANGSUNG (tanpa delay)
+            console.log('Starting app opening process immediately...');
+            openApp(); // Langsung jalankan tanpa setTimeout
+            
+            // Fallback timeout - show download options (lebih cepat lagi)
             setTimeout(function() {
                 if (!appOpened) {
-                    console.log('Meta refresh timeout, trying JavaScript fallback');
-                    document.getElementById('attemptDetails').textContent = 'Meta refresh failed, trying JavaScript...';
-                    
-                    // Fallback 1: Direct JavaScript redirect
-                    try {
-                        window.location.href = '${primaryScheme}';
-                    } catch (e) {
-                        console.log('JavaScript redirect failed:', e.message);
-                    }
+                    console.log('❌ App not opened after 5 seconds, showing fallback');
+                    showFailureMessage();
                 }
-            }, 1000);
+            }, 5000); // Kurangi ke 5000 untuk testing lebih cepat
             
-            // Android-specific fallback to Intent URL
-            ${isAndroid ? `
-            setTimeout(function() {
-                if (!appOpened) {
-                    console.log('Trying Android Intent URL fallback');
-                    document.getElementById('attemptDetails').textContent = 'Trying Android Intent URL...';
-                    try {
-                        window.location.href = '${fallbackScheme}';
-                    } catch (e) {
-                        console.log('Intent URL failed:', e.message);
-                    }
-                }
-            }, 2000);
-            ` : ''}
+            // Error handling
+            window.addEventListener('error', function(e) {
+                console.log('Error occurred:', e.message);
+            });
             
-            // Final timeout - show error message
-            setTimeout(function() {
-                showFailureMessage();
-            }, 3000);
-            
-            console.log('=== Script loaded, meta refresh should have triggered ===');
+            console.log('=== End Debug Info ===');
         </script>
     </body>
     </html>
